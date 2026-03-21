@@ -11,17 +11,20 @@
     <style>
         body { 
             font-family: 'Inter', sans-serif; 
-            background: #FAFAFA;
+            background: radial-gradient(circle at top left, #F7F1E6 0%, #F2E6D5 40%, #E9DDCB 100%);
+            color: #111827;
             min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
         }
         .luxury-card {
-            background: #FFFFFF;
-            border: 1px solid #F0F0F0;
-            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.03), 0 1px 2px 0 rgba(0, 0, 0, 0.02);
+            background: linear-gradient(135deg, #FEFCF8, #F5EDE1);
+            border: 1px solid rgba(148, 126, 86, 0.18);
+            box-shadow: 0 18px 40px rgba(15, 23, 42, 0.06);
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
         .luxury-card:hover {
-            box-shadow: 0 4px 12px 0 rgba(0, 0, 0, 0.05), 0 2px 4px 0 rgba(0, 0, 0, 0.03);
+            transform: translateY(-3px);
+            box-shadow: 0 26px 65px rgba(15, 23, 42, 0.14);
         }
         .matrix-card {
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -41,11 +44,11 @@
             left: 0;
         }
         .yellow-accent {
-            background: linear-gradient(135deg, #FBBF24 0%, #FCD34D 100%);
+            background: linear-gradient(135deg, #F7CF6B 0%, #F5B826 45%, #FCE7A2 100%);
         }
         .selected-day {
-            background: linear-gradient(135deg, #FBBF24 0%, #FCD34D 100%);
-            box-shadow: 0 4px 12px rgba(251, 191, 36, 0.3);
+            background: linear-gradient(135deg, #F7CF6B 0%, #F5B826 45%, #FCE7A2 100%);
+            box-shadow: 0 16px 40px rgba(180, 136, 48, 0.45);
         }
         .modal {
             display: none;
@@ -64,13 +67,14 @@
             justify-content: center;
         }
         .modal-content {
-            background: white;
+            background: radial-gradient(circle at top left, #FFFFFF 0%, #F9FAFB 55%, #E5E7EB 100%);
             border-radius: 24px;
             max-width: 900px;
             max-height: 90vh;
             width: 90%;
             overflow-y: auto;
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(15,23,42,0.08);
+            box-shadow: 0 30px 80px rgba(15,23,42,0.32);
         }
         .dropdown {
             position: relative;
@@ -81,12 +85,12 @@
             top: 100%;
             right: 0;
             margin-top: 8px;
-            background: white;
+            background: rgba(255,255,255,0.98);
             border-radius: 12px;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 20px 45px rgba(15,23,42,0.18);
             min-width: 240px;
             z-index: 50;
-            border: 1px solid #F0F0F0;
+            border: 1px solid rgba(148,163,184,0.28);
         }
         .dropdown-menu.active {
             display: block;
@@ -102,14 +106,15 @@
         .period-selector {
             display: flex;
             gap: 4px;
-            background: #F3F4F6;
+            background: rgba(255, 255, 255, 0.45);
             padding: 4px;
             border-radius: 12px;
+            border: 1px solid rgba(148, 126, 86, 0.32);
         }
         .period-btn {
             padding: 8px 16px;
-            border-radius: 8px;
-            font-size: 14px;
+            border-radius: 9999px;
+            font-size: 13px;
             font-weight: 500;
             cursor: pointer;
             transition: all 0.2s;
@@ -118,16 +123,42 @@
             color: #6B7280;
         }
         .period-btn.active {
-            background: white;
-            color: #1F2937;
-            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            background: linear-gradient(135deg, #F8D574, #F5B826);
+            color: #111827;
+            box-shadow: 0 10px 24px rgba(185, 132, 40, 0.35);
+        }
+        .primary-cta {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.8rem 1.9rem;
+            border-radius: 9999px;
+            background: #111827;
+            color: #F8D574;
+            font-size: 0.9rem;
+            letter-spacing: 0.03em;
+            font-weight: 600;
+            box-shadow: 0 14px 32px rgba(17, 24, 39, 0.55);
+            border: 1px solid rgba(248, 213, 116, 0.4);
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+        }
+        .primary-cta:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 20px 40px rgba(17, 24, 39, 0.7);
+            filter: brightness(1.03);
+        }
+        .primary-cta:active {
+            transform: translateY(0);
+            box-shadow: 0 10px 22px rgba(17, 24, 39, 0.5);
+            filter: brightness(0.98);
         }
     </style>
 </head>
 <body>
 
     <!-- Minimal Header -->
-    <header class="bg-white border-b border-gray-100">
+    <header class="bg-white/90 backdrop-blur border-b border-slate-200 shadow-sm">
         <div class="max-w-7xl mx-auto px-8 py-6">
             <div class="flex items-center justify-between">
                 <div>
@@ -141,14 +172,29 @@
                         <button class="period-btn {% if period == 'week' %}active{% endif %}" onclick="changePeriod('week')">Week</button>
                         <button class="period-btn {% if period == 'month' %}active{% endif %}" onclick="changePeriod('month')">Month</button>
                     </div>
-                    <div class="relative group cursor-pointer bg-gray-50 hover:bg-gray-100 transition-all duration-200 p-3 rounded-lg border border-gray-200">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-600">
-                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                            <line x1="16" y1="2" x2="16" y2="6"></line>
-                            <line x1="8" y1="2" x2="8" y2="6"></line>
-                            <line x1="3" y1="10" x2="21" y2="10"></line>
-                        </svg>
-                        <input type="date" onchange="changeDate(this.value)" value="{{ selected_date }}">
+                    <div id="datePicker" class="relative">
+                        <button type="button" onclick="toggleDatePicker()" class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/80 border border-[rgba(148,126,86,0.35)] text-sm text-gray-700 shadow-sm hover:bg-[#F7F1E6] transition-all duration-200">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-700">
+                                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                                <line x1="16" y1="2" x2="16" y2="6"></line>
+                                <line x1="8" y1="2" x2="8" y2="6"></line>
+                                <line x1="3" y1="10" x2="21" y2="10"></line>
+                            </svg>
+                            <span class="text-xs font-medium tracking-wide text-gray-700">
+                                {{ selected_date.strftime("%b %-d, %Y") if selected_date else "" }}
+                            </span>
+                        </button>
+                        <div id="dateDropdown" class="hidden absolute right-0 mt-3 w-72 rounded-2xl bg-[#FEFCF8] border border-[rgba(148,126,86,0.35)] shadow-2xl shadow-[rgba(15,23,42,0.18)] p-4 z-50">
+                            <div class="flex items-center justify-between mb-4 text-sm text-gray-700">
+                                <button type="button" onclick="navigateMonth(-1)" class="px-2 py-1 rounded-full hover:bg-[#F5EDE1]">&lsaquo;</button>
+                                <div id="dateDropdownLabel" class="font-medium"></div>
+                                <button type="button" onclick="navigateMonth(1)" class="px-2 py-1 rounded-full hover:bg-[#F5EDE1]">&rsaquo;</button>
+                            </div>
+                            <div class="grid grid-cols-7 gap-1 text-[11px] text-gray-400 mb-1">
+                                <div>Su</div><div>Mo</div><div>Tu</div><div>We</div><div>Th</div><div>Fr</div><div>Sa</div>
+                            </div>
+                            <div id="dateGrid" class="grid grid-cols-7 gap-1 text-xs"></div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -166,12 +212,12 @@
                 </div>
                 <div class="flex items-center gap-4">
                     <!-- View Full Day Button -->
-                    <button onclick="viewFullDay()" class="px-6 py-3 bg-gray-900 text-white rounded-xl font-medium hover:bg-gray-800 transition-all duration-200 luxury-card">
+                    <button onclick="viewFullDay()" class="primary-cta">
                         View Full Day
                     </button>
                     <!-- Filter Dropdown -->
                     <div class="dropdown">
-                        <button onclick="toggleDropdown()" class="px-6 py-3 bg-white text-gray-700 rounded-xl font-medium hover:bg-gray-50 transition-all duration-200 luxury-card flex items-center gap-2">
+                        <button onclick="toggleDropdown()" class="px-6 py-3 bg-white/90 text-slate-800 rounded-xl font-medium border border-slate-200 hover:bg-slate-50 transition-all duration-200 flex items-center gap-2">
                             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
                             </svg>
@@ -216,19 +262,48 @@
             {% endif %}
         </div>
 
-        <!-- Summary Metrics -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-            <div class="luxury-card rounded-2xl p-8">
-                <div class="text-sm text-gray-500 mb-2 font-medium">Total Time</div>
-                <div class="text-4xl font-light text-gray-900">{{ matrix.total_hours }}<span class="text-lg text-gray-400 font-normal ml-1">hrs</span></div>
+            <div class="luxury-card rounded-2xl p-8 flex flex-col justify-between">
+                <div class="flex items-center justify-between mb-4">
+                    <div>
+                        <div class="text-xs font-semibold tracking-[0.16em] text-gray-400 uppercase">Focus Time</div>
+                        <div class="mt-2 text-3xl font-light text-gray-900">{{ matrix.q2.hours }}<span class="text-sm text-gray-400 font-normal ml-1">hrs</span></div>
+                    </div>
+                    <span class="inline-flex h-9 px-3 items-center rounded-full bg-[#111827] text-[11px] font-medium tracking-wide text-[#F8D574] border border-[rgba(248,213,116,0.35)]">
+                        Deep work
+                    </span>
+                </div>
+                <div class="w-full h-2 rounded-full bg-[#E7D8C2] overflow-hidden">
+                    <div class="h-full rounded-full bg-gradient-to-r from-[#111827] via-[#111827] to-[#F5B826]" style="width: {{ matrix.q2.pct }}%"></div>
+                </div>
+                <div class="mt-3 text-xs text-gray-500">You spent {{ matrix.q2.pct }}% of your time on important, non‑urgent work.</div>
             </div>
-            <div class="luxury-card rounded-2xl p-8">
-                <div class="text-sm text-gray-500 mb-2 font-medium">Important Work</div>
-                <div class="text-4xl font-light text-gray-900">{{ (matrix.q1.hours + matrix.q2.hours) | round(1) }}<span class="text-lg text-gray-400 font-normal ml-1">hrs</span></div>
+            <div class="luxury-card rounded-2xl p-8 flex flex-col justify-between">
+                <div class="flex items-center justify-between mb-4">
+                    <div>
+                        <div class="text-xs font-semibold tracking-[0.16em] text-gray-400 uppercase">Critical Load</div>
+                        <div class="mt-2 text-3xl font-light text-gray-900">{{ matrix.q1.hours }}<span class="text-sm text-gray-400 font-normal ml-1">hrs</span></div>
+                    </div>
+                    <span class="inline-flex h-9 px-3 items-center rounded-full bg-[#FDF3DF] text-[11px] font-medium tracking-wide text-[#92400E] border border-amber-200">
+                        Urgent & important
+                    </span>
+                </div>
+                <div class="w-full h-2 rounded-full bg-[#E7D8C2] overflow-hidden">
+                    <div class="h-full rounded-full bg-gradient-to-r from-[#F97316] via-[#F59E0B] to-[#FACC15]" style="width: {{ matrix.q1.pct }}%"></div>
+                </div>
+                <div class="mt-3 text-xs text-gray-500">Represents {{ matrix.q1.pct }}% of your tracked time this period.</div>
             </div>
-            <div class="luxury-card rounded-2xl p-8">
-                <div class="text-sm text-gray-500 mb-2 font-medium">Productivity Score</div>
-                <div class="text-4xl font-light text-gray-900">{{ ((matrix.q2.pct + matrix.q1.pct) / 2) | round(1) }}<span class="text-lg text-gray-400 font-normal ml-1">%</span></div>
+            <div class="luxury-card rounded-2xl p-8 flex flex-col justify-between">
+                <div class="flex items-center justify-between mb-4">
+                    <div>
+                        <div class="text-xs font-semibold tracking-[0.16em] text-gray-400 uppercase">Aligned Time</div>
+                        <div class="mt-2 text-3xl font-light text-gray-900">{{ ((matrix.q2.pct + matrix.q1.pct) / 2) | round(1) }}<span class="text-sm text-gray-400 font-normal ml-1">%</span></div>
+                    </div>
+                </div>
+                <div class="w-full h-2 rounded-full bg-[#E7D8C2] overflow-hidden">
+                    <div class="h-full rounded-full bg-gradient-to-r from-[#22C55E] via-[#A3E635] to-[#FACC15]" style="width: {{ ((matrix.q2.pct + matrix.q1.pct) / 2) | round(1) }}%"></div>
+                </div>
+                <div class="mt-3 text-xs text-gray-500">Average of growth and critical work share – closer to 100% means your calendar matches your priorities.</div>
             </div>
         </div>
 
@@ -298,8 +373,7 @@
 
             <!-- Sidebar -->
             <div class="space-y-8">
-                <!-- Tags Chart -->
-                <div class="luxury-card rounded-2xl p-8">
+                <div class="luxury-card rounded-2xl p-8 {% if tags.labels %}cursor-pointer{% endif %}" {% if tags.labels %}onclick="window.applyFilter('all', 'By Category')"{% endif %}>
                     <div class="mb-6">
                         <h3 class="text-xl font-light text-gray-900 mb-1">Time by Category</h3>
                         <p class="text-xs text-gray-500">Tag distribution</p>
@@ -329,11 +403,11 @@
                     </div>
                     <div class="flex items-end gap-2 h-32">
                         {% for day in week_days %}
-                        <div class="flex-1 flex flex-col items-center">
+                        <div class="flex-1 flex flex-col items-center cursor-pointer" onclick="window.location.href='/?date={{ day.full_str }}&period=day'">
                             <div class="text-xs text-gray-400 mb-2 font-medium">{{ day.day_name }}</div>
                             <div class="w-full bg-gray-100 rounded-t-lg flex-1 flex items-end relative group">
                                 {% set day_hours = day.hours if day.hours else 0 %}
-                                {% set max_day_hours = 8 %}
+                                {% set max_day_hours = 24 %}
                                 {% set height_pct = ((day_hours / max_day_hours) * 100) if day_hours > 0 else 5 %}
                                 <div class="w-full rounded-t-lg transition-all duration-300 {% if day.is_selected %}yellow-accent{% else %}bg-gray-300 group-hover:bg-gray-400{% endif %}" 
                                      style="height: {{ height_pct }}%"></div>
@@ -385,6 +459,63 @@
             window.location.href = `/?date=${date}&period=${window.currentPeriod}`;
         };
 
+        window.toggleDatePicker = function() {
+            const dropdown = document.getElementById('dateDropdown');
+            if (!dropdown) return;
+            dropdown.classList.toggle('hidden');
+        };
+
+        window.navigateMonth = function(offset) {
+            if (!window.dateCursor) {
+                window.dateCursor = new Date(window.currentDate);
+            }
+            window.dateCursor.setMonth(window.dateCursor.getMonth() + offset);
+            window.renderDateGrid();
+        };
+
+        window.renderDateGrid = function() {
+            const grid = document.getElementById('dateGrid');
+            const label = document.getElementById('dateDropdownLabel');
+            if (!grid || !label) return;
+
+            const base = window.dateCursor ? new Date(window.dateCursor) : new Date(window.currentDate);
+            const year = base.getFullYear();
+            const month = base.getMonth();
+
+            const first = new Date(year, month, 1);
+            const startDay = first.getDay();
+            const last = new Date(year, month + 1, 0);
+            const totalDays = last.getDate();
+
+            label.textContent = base.toLocaleString('default', { month: 'long', year: 'numeric' });
+
+            grid.innerHTML = '';
+            for (let i = 0; i < startDay; i++) {
+                const empty = document.createElement('div');
+                empty.className = 'h-8';
+                grid.appendChild(empty);
+            }
+
+            const selected = new Date(window.currentDate);
+            for (let day = 1; day <= totalDays; day++) {
+                const d = new Date(year, month, day);
+                const btn = document.createElement('button');
+                const isSelected = d.toDateString() === selected.toDateString();
+                btn.textContent = day;
+                btn.className = [
+                    'h-8 w-8 flex items-center justify-center rounded-full text-xs',
+                    isSelected
+                        ? 'bg-[#111827] text-[#F8D574] shadow'
+                        : 'text-gray-700 hover:bg-[#F5EDE1]'
+                ].join(' ');
+                btn.onclick = function() {
+                    const iso = d.toISOString().slice(0, 10);
+                    window.changeDate(iso);
+                };
+                grid.appendChild(btn);
+            }
+        };
+
         window.toggleDropdown = function() {
             document.getElementById('filterDropdown').classList.toggle('active');
         };
@@ -401,6 +532,14 @@
         window.viewMatrixQuadrant = function(quadrant, name) {
             console.log('Matrix quadrant clicked:', quadrant, name);
             window.applyFilter(quadrant, name);
+        };
+
+        const TAG_COLOR_MAP = {
+            'Work': '#1D4ED8',
+            'Necessity': '#16A34A',
+            'Waste': '#E11D48',
+            'Urgent': '#F97316',
+            'Important': '#6366F1'
         };
 
         window.applyFilter = function(filterType, title, tagName = '') {
@@ -428,16 +567,56 @@
                 });
         };
 
-        window.showModal = function(title, data, filterType) {
-            console.log('Showing modal:', title, data);
-            const modal = document.getElementById('taskModal');
-            if (!modal) {
-                console.error('Modal element not found!');
+        window.renderModalTasks = function() {
+            const container = document.getElementById('modalTasks');
+            if (!container || !window.modalData) return;
+            const hidden = window.hiddenTags || {};
+            const tasks = window.modalData.tasks || [];
+            const active = Object.keys(hidden).length
+                ? tasks.filter(t => !hidden[t.tag])
+                : tasks.slice();
+            if (active.length === 0) {
+                container.innerHTML = '<div class="text-center py-8 text-gray-400">No tasks found</div>';
                 return;
             }
+            let html = '';
+            active.forEach(task => {
+                const badges = [];
+                if (task.important) badges.push('<span class="px-2 py-1 bg-emerald-50 text-emerald-700 text-xs rounded-full">Important</span>');
+                if (task.urgent) badges.push('<span class="px-2 py-1 bg-red-50 text-red-700 text-xs rounded-full">Urgent</span>');
+                let displayTag = task.tag;
+                let tagClass = 'px-2 py-0.5 bg-gray-100 rounded-full text-xs text-gray-700';
+                if (!task.important && !task.urgent && task.tag === 'Waste') {
+                    tagClass = 'px-2 py-0.5 bg-rose-50 rounded-full text-xs text-rose-700';
+                }
+                html += `
+                    <div class="luxury-card rounded-xl p-4">
+                        <div class="flex justify-between items-start">
+                            <div class="flex-1">
+                                <div class="font-medium text-gray-900 mb-1">${task.task}</div>
+                                <div class="flex items-center gap-3 text-sm text-gray-500">
+                                    <span>${task.start_time} - ${task.end_time}</span>
+                                    <span class="${tagClass}">${displayTag}</span>
+                                    ${badges.join('')}
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <div class="font-semibold text-gray-900">${task.duration}h</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+        };
+
+        window.showModal = function(title, data, filterType) {
+            const modal = document.getElementById('taskModal');
+            if (!modal) return;
+            window.modalData = data;
+            window.modalFilterType = filterType;
+            window.hiddenTags = window.hiddenTags || {};
             document.getElementById('modalTitle').textContent = title;
-            
-            // Stats
             const statsHtml = `
                 <div class="text-center">
                     <div class="text-2xl font-light text-gray-900">${data.total_hours}</div>
@@ -453,13 +632,9 @@
                 </div>
             `;
             document.getElementById('modalStats').innerHTML = statsHtml;
-
-            // Chart
             const chartContainer = document.getElementById('modalChart');
             chartContainer.innerHTML = '<canvas id="filterChart"></canvas>';
-            
             if (data.tasks.length > 0) {
-                // Group by tag
                 const tagGroups = {};
                 data.tasks.forEach(task => {
                     if (!tagGroups[task.tag]) {
@@ -467,18 +642,18 @@
                     }
                     tagGroups[task.tag] += task.duration;
                 });
-
                 const ctx = document.getElementById('filterChart').getContext('2d');
-                new Chart(ctx, {
+                const labels = Object.keys(tagGroups);
+                const values = Object.values(tagGroups);
+                const palette = ['#111827', '#16A34A', '#F59E0B', '#E11D48', '#64748B', '#0369A1', '#7C3AED', '#F97316'];
+                const colors = labels.map((label, idx) => TAG_COLOR_MAP[label] || palette[idx % palette.length]);
+                const chart = new Chart(ctx, {
                     type: 'pie',
                     data: {
-                        labels: Object.keys(tagGroups),
+                        labels: labels,
                         datasets: [{
-                            data: Object.values(tagGroups),
-                            backgroundColor: [
-                                '#10B981', '#F59E0B', '#78716C', '#F43F5E',
-                                '#6366F1', '#8B5CF6', '#EC4899', '#14B8A6'
-                            ]
+                            data: values,
+                            backgroundColor: colors
                         }]
                     },
                     options: {
@@ -486,44 +661,43 @@
                         maintainAspectRatio: false,
                         plugins: {
                             legend: {
-                                position: 'bottom'
+                                position: 'bottom',
+                                onClick: function(e, legendItem, legend) {
+                                    const ci = legend.chart;
+                                    const index = legendItem.index;
+                                    const label = ci.data.labels[index];
+                                    const currentlyVisible = ci.getDataVisibility(index) !== false;
+                                    ci.toggleDataVisibility(index);
+                                    ci.update();
+                                    if (!window.hiddenTags) window.hiddenTags = {};
+                                    if (currentlyVisible) {
+                                        window.hiddenTags[label] = true;
+                                    } else {
+                                        delete window.hiddenTags[label];
+                                    }
+                                    window.renderModalTasks();
+                                }
                             }
+                        },
+                        onClick: function(evt, elements) {
+                            if (!elements || !elements.length) return;
+                            const index = elements[0].index;
+                            const label = chart.data.labels[index];
+                            const currentlyVisible = chart.getDataVisibility(index) !== false;
+                            chart.toggleDataVisibility(index);
+                            chart.update();
+                            if (!window.hiddenTags) window.hiddenTags = {};
+                            if (currentlyVisible) {
+                                window.hiddenTags[label] = true;
+                            } else {
+                                delete window.hiddenTags[label];
+                            }
+                            window.renderModalTasks();
                         }
                     }
                 });
             }
-
-            // Tasks list
-            let tasksHtml = '';
-            if (data.tasks.length === 0) {
-                tasksHtml = '<div class="text-center py-8 text-gray-400">No tasks found</div>';
-            } else {
-                data.tasks.forEach(task => {
-                    const badges = [];
-                    if (task.important) badges.push('<span class="px-2 py-1 bg-amber-100 text-amber-700 text-xs rounded">Important</span>');
-                    if (task.urgent) badges.push('<span class="px-2 py-1 bg-red-100 text-red-700 text-xs rounded">Urgent</span>');
-                    
-                    tasksHtml += `
-                        <div class="luxury-card rounded-xl p-4">
-                            <div class="flex justify-between items-start">
-                                <div class="flex-1">
-                                    <div class="font-medium text-gray-900 mb-1">${task.task}</div>
-                                    <div class="flex items-center gap-3 text-sm text-gray-500">
-                                        <span>${task.start_time} - ${task.end_time}</span>
-                                        <span class="px-2 py-0.5 bg-gray-100 rounded text-xs">${task.tag}</span>
-                                        ${badges.join('')}
-                                    </div>
-                                </div>
-                                <div class="text-right">
-                                    <div class="font-semibold text-gray-900">${task.duration}h</div>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                });
-            }
-            document.getElementById('modalTasks').innerHTML = tasksHtml;
-
+            window.renderModalTasks();
             document.getElementById('taskModal').classList.add('active');
         };
 
@@ -533,10 +707,13 @@
 
         // Initialize on DOM load
         document.addEventListener('DOMContentLoaded', function() {
-            // Close dropdown when clicking outside
             document.addEventListener('click', (e) => {
                 if (!e.target.closest('.dropdown')) {
                     window.closeDropdown();
+                }
+                if (!e.target.closest('#datePicker')) {
+                    const dd = document.getElementById('dateDropdown');
+                    if (dd) dd.classList.add('hidden');
                 }
             });
 
@@ -563,19 +740,21 @@
                 }
             });
 
-            // Tag Chart
+            window.dateCursor = new Date(window.currentDate);
+            window.renderDateGrid();
+
             {% if tags.labels %}
-            const ctx = document.getElementById('tagChart').getContext('2d');
-            new Chart(ctx, {
+            const tagCtx = document.getElementById('tagChart').getContext('2d');
+            const tagPalette = ['#111827', '#16A34A', '#F59E0B', '#E11D48', '#64748B', '#0369A1', '#7C3AED', '#F97316'];
+            const tagLabels = {{ tags.labels | safe }};
+            const tagColors = tagLabels.map((label, idx) => TAG_COLOR_MAP[label] || tagPalette[idx % tagPalette.length]);
+            const tagChart = new Chart(tagCtx, {
                 type: 'doughnut',
                 data: {
-                    labels: {{ tags.labels | safe }},
+                    labels: tagLabels,
                     datasets: [{
                         data: {{ tags.data | safe }},
-                        backgroundColor: [
-                            '#10B981', '#F59E0B', '#78716C', '#F43F5E',
-                            '#6366F1', '#8B5CF6', '#EC4899', '#14B8A6'
-                        ],
+                        backgroundColor: tagColors,
                         borderWidth: 0,
                         hoverOffset: 8
                     }]
@@ -604,6 +783,13 @@
                     }
                 }
             });
+            tagChart.options.onClick = function(evt, elements) {
+                if (!elements || !elements.length) return;
+                const index = elements[0].index;
+                const label = tagChart.data.labels[index];
+                window.applyFilter('tag', label, label);
+            };
+            tagChart.update();
             {% endif %}
         }); // End DOMContentLoaded
     </script>
