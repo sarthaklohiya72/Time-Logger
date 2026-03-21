@@ -29,6 +29,19 @@ SYNC_INTERVAL_SECONDS = int(os.getenv("SYNC_INTERVAL_SECONDS", "300"))
 
 _LAST_SYNC_TS: Optional[datetime] = None
 
+def human_hours(h: float) -> str:
+    total = max(0, int(round(float(h) * 60)))
+    hrs = total // 60
+    mins = total % 60
+    if hrs == 0:
+        return f"{mins} minutes"
+    if mins == 0:
+        return f"{hrs} hours"
+    if mins == 30:
+        return f"{hrs}.5 hours"
+    return f"{hrs} hours {mins} minutes"
+
+app.jinja_env.filters["human_hours"] = human_hours
 
 def get_db_connection() -> sqlite3.Connection:
     conn = sqlite3.connect(DB_NAME)
@@ -266,7 +279,7 @@ def sync_cloud_data(force: bool = False) -> None:
                     p["end_dt"].strftime("%H:%M:%S"),
                     p["task"],
                     duration,
-                    p["tag"],
+                    p["tag"], 
                     1 if p["urg"] else 0,
                     1 if p["imp"] else 0,
                 ),
@@ -616,6 +629,7 @@ def hard_reset():
         return jsonify({"status": "error", "message": str(exc)}), 500
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     init_db()
-    app.run(debug=True, port=5001)
+    # host='0.0.0.0' allows access from other devices on the network
+    app.run(debug=True, host='0.0.0.0', port=5001)

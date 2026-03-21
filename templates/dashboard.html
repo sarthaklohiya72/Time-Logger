@@ -153,6 +153,9 @@
             box-shadow: 0 10px 22px rgba(17, 24, 39, 0.5);
             filter: brightness(0.98);
         }
+        .hover-swap {
+            transition: opacity 0.2s ease-in-out;
+        }
     </style>
     <style>
         .sr-only {
@@ -168,7 +171,7 @@
         }
     </style>
 </head>
-<body class="antialiased">
+<body class="antialiased overflow-x-hidden">
 
     <div id="globalLoading" class="fixed bottom-4 right-4 z-50 hidden">
         <div class="px-4 py-2 rounded-full bg-gray-900/90 text-xs text-gray-100 shadow-lg flex items-center gap-2">
@@ -193,7 +196,7 @@
                 </div>
                 <div class="flex items-center gap-4">
                     <!-- Period Selector -->
-                    <div class="period-selector">
+                    <div class="period-selector hidden md:flex">
                         <button class="period-btn {% if period == 'day' %}active{% endif %}" onclick="changePeriod('day')">Day</button>
                         <button class="period-btn {% if period == 'week' %}active{% endif %}" onclick="changePeriod('week')">Week</button>
                         <button class="period-btn {% if period == 'month' %}active{% endif %}" onclick="changePeriod('month')">Month</button>
@@ -210,7 +213,7 @@
                                 {{ selected_date.strftime("%b %-d, %Y") if selected_date else "" }}
                             </span>
                         </button>
-                        <div id="dateDropdown" class="hidden absolute right-0 mt-3 w-72 rounded-2xl bg-[#FEFCF8] border border-[rgba(148,126,86,0.35)] shadow-2xl shadow-[rgba(15,23,42,0.18)] p-4 z-50">
+                        <div id="dateDropdown" class="hidden absolute left-1/2 -translate-x-1/2 md:left-auto md:translate-x-0 md:right-0 mt-3 w-72 rounded-2xl bg-[#FEFCF8] border border-[rgba(148,126,86,0.35)] shadow-2xl shadow-[rgba(15,23,42,0.18)] p-4 z-50">
                             <div class="flex items-center justify-between mb-4 text-sm text-gray-700">
                                 <button type="button" onclick="navigateMonth(-1)" class="px-2 py-1 rounded-full hover:bg-[#F5EDE1]">&lsaquo;</button>
                                 <div id="dateDropdownLabel" class="font-medium"></div>
@@ -227,23 +230,39 @@
         </div>
     </header>
 
-    <main class="max-w-7xl mx-auto px-8 py-12" role="main">
+    <main class="max-w-7xl mx-auto px-6 md:px-8 pt-8 pb-24 md:py-12" role="main" id="top">
         
         <!-- Month Header & Controls -->
-        <div class="mb-12">
-            <div class="flex items-center justify-between mb-8">
-                <div>
-                    <h2 class="text-4xl font-light text-gray-900 mb-2 tracking-tight">{{ current_month }}</h2>
-                    <p class="text-gray-500 text-sm">Where did your day go?</p>
+        <div class="mb-10 md:mb-12" id="monthHeader">
+            <div class="md:hidden mb-6">
+                <div class="flex w-full bg-white/80 border border-[rgba(148,126,86,0.35)] rounded-full p-1 shadow-sm">
+                    <button onclick="changePeriod('day')" class="flex-1 py-2 rounded-full text-sm font-medium transition
+                        {% if period == 'day' %} bg-amber-400 text-gray-900 shadow {% else %} text-gray-600 hover:bg-slate-50 {% endif %}">
+                        Day
+                    </button>
+                    <button onclick="changePeriod('week')" class="flex-1 py-2 rounded-full text-sm font-medium transition
+                        {% if period == 'week' %} bg-amber-400 text-gray-900 shadow {% else %} text-gray-600 hover:bg-slate-50 {% endif %}">
+                        Week
+                    </button>
+                    <button onclick="changePeriod('month')" class="flex-1 py-2 rounded-full text-sm font-medium transition
+                        {% if period == 'month' %} bg-amber-400 text-gray-900 shadow {% else %} text-gray-600 hover:bg-slate-50 {% endif %}">
+                        Month
+                    </button>
                 </div>
-                <div class="flex items-center gap-4">
+            </div>
+            <div class="flex items-center justify-between mb-6 md:mb-8">
+                <div>
+                    <h2 class="text-3xl md:text-4xl font-light text-gray-900 mb-1 md:mb-2 tracking-tight">{{ current_month }}</h2>
+                    <p class="text-gray-700 md:text-gray-500 text-sm">Where did your day go?</p>
+                </div>
+                <div class="flex items-center gap-3 md:gap-4">
                     <!-- View Full Day Button -->
-                    <button onclick="viewFullDay()" class="primary-cta">
+                    <button onclick="viewFullDay()" class="primary-cta hidden md:inline-flex">
                         View Full Day
                     </button>
                     <!-- Filter Dropdown -->
                     <div class="dropdown">
-                        <button onclick="toggleDropdown()" class="px-6 py-3 bg-white/90 text-slate-800 rounded-xl font-medium border border-slate-200 hover:bg-slate-50 transition-all duration-200 flex items-center gap-2">
+                        <button id="headerFilterBtn" onclick="toggleDropdown()" class="hidden md:flex px-6 py-3 bg-white/90 text-slate-800 rounded-xl font-medium border border-slate-200 hover:bg-slate-50 transition-all duration-200 items-center gap-2">
                             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
                             </svg>
@@ -263,6 +282,11 @@
                         </div>
                     </div>
                 </div>
+            </div>
+            <div class="md:hidden flex items-center gap-3 mb-4">
+                <button onclick="viewFullDay()" class="px-5 py-3 rounded-full bg-gray-900 text-amber-300 text-sm font-semibold shadow-lg active:scale-[0.98] transition-transform">
+                    View Full Day
+                </button>
             </div>
 
             <!-- Week Selector (only show for day/week views) -->
@@ -293,7 +317,7 @@
                 <div class="flex items-center justify-between mb-4">
                     <div>
                         <div class="text-xs font-semibold tracking-[0.16em] text-gray-400 uppercase">Focus Time</div>
-                        <div class="mt-2 text-3xl font-light text-gray-900">{{ matrix.q2.hours }}<span class="text-sm text-gray-400 font-normal ml-1">hrs</span></div>
+                        <div class="mt-2 text-3xl font-light text-gray-900"><span class="js-hover-hours" data-hours="{{ matrix.q2.hours }}">{{ matrix.q2.hours }}h</span></div>
                     </div>
                     <span class="inline-flex h-9 px-3 items-center rounded-full bg-[#111827] text-[11px] font-medium tracking-wide text-[#F8D574] border border-[rgba(248,213,116,0.35)]">
                         Deep work
@@ -308,7 +332,7 @@
                 <div class="flex items-center justify-between mb-4">
                     <div>
                         <div class="text-xs font-semibold tracking-[0.16em] text-gray-400 uppercase">Critical Load</div>
-                        <div class="mt-2 text-3xl font-light text-gray-900">{{ matrix.q1.hours }}<span class="text-sm text-gray-400 font-normal ml-1">hrs</span></div>
+                        <div class="mt-2 text-3xl font-light text-gray-900"><span class="js-hover-hours" data-hours="{{ matrix.q1.hours }}">{{ matrix.q1.hours }}h</span></div>
                     </div>
                     <span class="inline-flex h-9 px-3 items-center rounded-full bg-[#FDF3DF] text-[11px] font-medium tracking-wide text-[#92400E] border border-amber-200">
                         Urgent & important
@@ -337,14 +361,14 @@
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
             
             <!-- Priority Matrix - Eisenhower Matrix -->
-            <div class="lg:col-span-2">
+            <div class="lg:col-span-2" id="matrix">
                 <div class="mb-6">
                     <h3 class="text-2xl font-light text-gray-900 mb-1">Priority Breakdown</h3>
                     <p class="text-sm text-gray-500">Eisenhower Matrix analysis</p>
                 </div>
-                <div class="grid grid-cols-2 gap-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <!-- Growth: Important, Not Urgent -->
-                    <div class="matrix-card luxury-card rounded-2xl p-8 bg-gradient-to-br from-emerald-50/50 to-white border-emerald-100" onclick="viewMatrixQuadrant('q2', 'Growth')">
+                    <div class="matrix-card luxury-card rounded-2xl p-8 h-full bg-gradient-to-br from-emerald-50/50 to-white border-emerald-100" onclick="viewMatrixQuadrant('q2', 'Growth')">
                         <div class="flex justify-between items-start mb-6">
                             <div>
                                 <h4 class="text-emerald-900 font-semibold text-xl mb-1">Growth</h4>
@@ -352,12 +376,12 @@
                             </div>
                             <div class="text-3xl text-emerald-300">★</div>
                         </div>
-                        <div class="text-5xl font-light text-gray-900 mb-2">{{ matrix.q2.hours }}<span class="text-xl text-gray-500 font-normal ml-1">hrs</span></div>
+                        <div class="text-5xl font-light text-gray-900 mb-2"><span class="js-hover-hours" data-hours="{{ matrix.q2.hours }}">{{ matrix.q2.hours }}h</span></div>
                         <div class="text-sm font-medium text-emerald-700">{{ matrix.q2.pct }}% of total</div>
                     </div>
 
                     <!-- Critical: Urgent & Important -->
-                    <div class="matrix-card luxury-card rounded-2xl p-8 bg-gradient-to-br from-amber-50/50 to-white border-amber-100" onclick="viewMatrixQuadrant('q1', 'Critical')">
+                    <div class="matrix-card luxury-card rounded-2xl p-8 h-full bg-gradient-to-br from-amber-50/50 to-white border-amber-100" onclick="viewMatrixQuadrant('q1', 'Critical')">
                         <div class="flex justify-between items-start mb-6">
                             <div>
                                 <h4 class="text-amber-900 font-semibold text-xl mb-1">Critical</h4>
@@ -365,12 +389,12 @@
                             </div>
                             <div class="text-3xl text-amber-300">!</div>
                         </div>
-                        <div class="text-5xl font-light text-gray-900 mb-2">{{ matrix.q1.hours }}<span class="text-xl text-gray-500 font-normal ml-1">hrs</span></div>
+                        <div class="text-5xl font-light text-gray-900 mb-2"><span class="js-hover-hours" data-hours="{{ matrix.q1.hours }}">{{ matrix.q1.hours }}h</span></div>
                         <div class="text-sm font-medium text-amber-700">{{ matrix.q1.pct }}% of total</div>
                     </div>
 
                     <!-- Drudgery: Urgent, Not Important -->
-                    <div class="matrix-card luxury-card rounded-2xl p-8 bg-gradient-to-br from-stone-50/50 to-white border-stone-200" onclick="viewMatrixQuadrant('q3', 'Drudgery')">
+                    <div class="matrix-card luxury-card rounded-2xl p-8 h-full bg-gradient-to-br from-stone-50/50 to-white border-stone-200" onclick="viewMatrixQuadrant('q3', 'Drudgery')">
                         <div class="flex justify-between items-start mb-6">
                             <div>
                                 <h4 class="text-stone-800 font-semibold text-xl mb-1">Drudgery</h4>
@@ -378,12 +402,12 @@
                             </div>
                             <div class="text-3xl text-stone-300">#</div>
                         </div>
-                        <div class="text-5xl font-light text-gray-800 mb-2">{{ matrix.q3.hours }}<span class="text-xl text-gray-500 font-normal ml-1">hrs</span></div>
+                        <div class="text-5xl font-light text-gray-800 mb-2"><span class="js-hover-hours" data-hours="{{ matrix.q3.hours }}">{{ matrix.q3.hours }}h</span></div>
                         <div class="text-sm font-medium text-stone-600">{{ matrix.q3.pct }}% of total</div>
                     </div>
 
                     <!-- Waste: Neither -->
-                    <div class="matrix-card luxury-card rounded-2xl p-8 bg-gradient-to-br from-rose-50/50 to-white border-rose-100" onclick="viewMatrixQuadrant('q4', 'Waste')">
+                    <div class="matrix-card luxury-card rounded-2xl p-8 h-full bg-gradient-to-br from-rose-50/50 to-white border-rose-100" onclick="viewMatrixQuadrant('q4', 'Waste')">
                         <div class="flex justify-between items-start mb-6">
                             <div>
                                 <h4 class="text-rose-900 font-semibold text-xl mb-1">Waste</h4>
@@ -391,7 +415,7 @@
                             </div>
                             <div class="text-3xl text-rose-300">×</div>
                         </div>
-                        <div class="text-5xl font-light text-gray-900 mb-2">{{ matrix.q4.hours }}<span class="text-xl text-gray-500 font-normal ml-1">hrs</span></div>
+                        <div class="text-5xl font-light text-gray-900 mb-2"><span class="js-hover-hours" data-hours="{{ matrix.q4.hours }}">{{ matrix.q4.hours }}h</span></div>
                         <div class="text-sm font-medium text-rose-700">{{ matrix.q4.pct }}% of total</div>
                     </div>
                 </div>
@@ -399,12 +423,12 @@
 
             <!-- Sidebar -->
             <div class="space-y-8">
-                <div class="luxury-card rounded-2xl p-8 {% if tags.labels %}cursor-pointer{% endif %}" {% if tags.labels %}onclick="window.applyFilter('all', 'By Category')"{% endif %}>
+                <div class="luxury-card rounded-2xl p-6 md:p-8 h-full {% if tags.labels %}cursor-pointer{% endif %}" id="tags" {% if tags.labels %}onclick="window.applyFilter('all', 'By Category')"{% endif %}>
                     <div class="mb-6">
                         <h3 class="text-xl font-light text-gray-900 mb-1">Time by Category</h3>
                         <p class="text-xs text-gray-500">Tag distribution</p>
                     </div>
-                    <div class="relative w-full h-64 flex items-center justify-center" role="img" aria-label="Time spent by tag category">
+                    <div class="relative w-full h-48 md:h-56 lg:h-64 flex items-center justify-center" role="img" aria-label="Time spent by tag category">
                         {% if tags.labels %}
                         <canvas id="tagChart" aria-hidden="true"></canvas>
                         {% else %}
@@ -416,42 +440,85 @@
                     </div>
                 </div>
 
-                <!-- Weekly Progress -->
-                {% if period == 'day' or period == 'week' %}
-                <div class="luxury-card rounded-2xl p-8">
-                    <div class="mb-6">
-                        <h3 class="text-xl font-light text-gray-900 mb-1">This Week</h3>
-                        <p class="text-xs text-gray-500">Daily breakdown</p>
-                    </div>
-                    <div class="mb-6">
-                        <div class="text-3xl font-light text-gray-900 mb-1">{{ week_total }}<span class="text-base text-gray-400 font-normal ml-1">hrs</span></div>
-                        <div class="text-sm text-gray-500">Total this week</div>
-                    </div>
-                    <div class="flex items-end gap-2 h-32">
-                        {% for day in week_days %}
-                        <div class="flex-1 flex flex-col items-center cursor-pointer" onclick="window.location.href='/?date={{ day.full_str }}&period=day'">
-                            <div class="text-xs text-gray-400 mb-2 font-medium">{{ day.day_name }}</div>
-                            <div class="w-full bg-gray-100 rounded-t-lg flex-1 flex items-end relative group">
-                                {% set day_hours = day.hours if day.hours else 0 %}
-                                {% set max_day_hours = 24 %}
-                                {% set height_pct = ((day_hours / max_day_hours) * 100) if day_hours > 0 else 5 %}
-                                <div class="w-full rounded-t-lg transition-all duration-300 {% if day.is_selected %}yellow-accent{% else %}bg-gray-300 group-hover:bg-gray-400{% endif %}" 
-                                     style="height: {{ height_pct }}%"></div>
-                                {% if day_hours > 0 %}
-                                <div class="absolute -top-6 left-1/2 transform -translate-x-1/2 text-xs font-medium text-gray-600 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">
-                                    {{ day_hours }}h
-                                </div>
-                                {% endif %}
-                            </div>
+                <div class="luxury-card rounded-2xl p-5 md:hidden">
+                    <div class="flex items-center justify-between mb-4">
+                        <div>
+                            <div class="text-xs font-semibold tracking-[0.16em] text-gray-400 uppercase">Focus Time</div>
+                            <div class="mt-2 text-2xl font-light text-gray-900">{{ matrix.q2.hours }}<span class="text-sm text-gray-500 font-normal ml-1">hrs</span></div>
                         </div>
-                        {% endfor %}
+                        {% if matrix.q2.hours > 0 %}
+                        <span class="px-3 py-1 rounded-full bg-gray-900 text-amber-300 text-xs font-semibold">Deep work</span>
+                        {% endif %}
                     </div>
+                    <div class="mb-2">
+                        <div class="w-full h-2 rounded-full bg-[#E7D8C2] overflow-hidden">
+                            <div class="h-full rounded-full bg-gradient-to-r from-[#F8D574] via-[#F5B826] to-[#FCE7A2]" style="width: {{ matrix.q2.pct }}%"></div>
+                        </div>
+                    </div>
+                    <div class="text-xs text-gray-500">You spent {{ matrix.q2.pct }}% of your time on important, non-urgent work.</div>
                 </div>
-                {% endif %}
+
+                <!-- Weekly Progress removed for visual consistency -->
             </div>
         </div>
 
     </main>
+
+    <nav class="fixed bottom-0 inset-x-0 md:hidden z-40">
+        <div class="mx-auto max-w-7xl">
+            <div class="flex items-center justify-around bg-white/95 backdrop-blur border-t border-slate-200 shadow-lg px-2 py-2" style="padding-bottom: env(safe-area-inset-bottom);">
+                <button id="navHome" class="flex flex-col items-center gap-1 px-3 py-1 rounded-xl text-gray-600">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.6" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 12l9-9 9 9M5 10v10h14V10" />
+                    </svg>
+                    <span class="text-[10px] font-medium">Home</span>
+                </button>
+                <button id="navMatrix" class="flex flex-col items-center gap-1 px-3 py-1 rounded-xl text-gray-600">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.6" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z" />
+                    </svg>
+                    <span class="text-[10px] font-medium">Matrix</span>
+                </button>
+                <button id="navTags" class="flex flex-col items-center gap-1 px-3 py-1 rounded-xl text-gray-600">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.6" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 7h9.5a2.5 2.5 0 012.5 2.5V19L13 15H5a2 2 0 01-2-2V9a2 2 0 012-2z" />
+                    </svg>
+                    <span class="text-[10px] font-medium">Tags</span>
+                </button>
+                <button id="navFilter" class="flex flex-col items-center gap-1 px-3 py-1 rounded-xl text-gray-600">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.6" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 5h18M6 12h12M10 19h4" />
+                    </svg>
+                    <span class="text-[10px] font-medium">Filter</span>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Mobile Filter Sheet -->
+    <div id="mobileFilterBackdrop" class="fixed inset-0 bg-black/30 backdrop-blur-sm opacity-0 pointer-events-none md:hidden transition-opacity duration-200"></div>
+    <div id="mobileFilterSheet" class="fixed inset-x-0 bottom-0 translate-y-full md:hidden transition-transform duration-300 z-50">
+        <div class="mx-auto max-w-7xl">
+            <div class="bg-[#FEFCF8] border-t border-[rgba(148,126,86,0.25)] rounded-t-2xl shadow-2xl p-4">
+                <div class="flex items-center justify-between mb-3">
+                    <div class="text-sm font-semibold text-gray-700">Filters</div>
+                    <button id="mobileFilterClose" class="px-3 py-1 rounded-full text-xs text-gray-600 border border-slate-200 active:scale-[0.98] transition">
+                        Close
+                    </button>
+                </div>
+                <div class="grid grid-cols-2 gap-2 mb-3">
+                    <button class="px-3 py-2 rounded-xl bg-white border border-slate-200 text-xs text-gray-700 active:scale-[0.98] transition" onclick="applyFilter('all', 'All Tasks')">All Tasks</button>
+                    <button class="px-3 py-2 rounded-xl bg-white border border-slate-200 text-xs text-gray-700 active:scale-[0.98] transition" onclick="applyFilter('imp', 'Important Work')">Important</button>
+                    <button class="px-3 py-2 rounded-xl bg-white border border-slate-200 text-xs text-gray-700 active:scale-[0.98] transition" onclick="applyFilter('urg', 'Urgent Work')">Urgent</button>
+                    <button class="px-3 py-2 rounded-xl bg-white border border-slate-200 text-xs text-gray-700 active:scale-[0.98] transition" onclick="applyFilter('imp_and_urg', 'Important & Urgent')">Important & Urgent</button>
+                    <button class="px-3 py-2 rounded-xl bg-white border border-slate-200 text-xs text-gray-700 active:scale-[0.98] transition" onclick="applyFilter('imp_not_urg', 'Important, Not Urgent')">Important, Not Urgent</button>
+                    <button class="px-3 py-2 rounded-xl bg-white border border-slate-200 text-xs text-gray-700 active:scale-[0.98] transition" onclick="applyFilter('urg_not_imp', 'Urgent, Not Important')">Urgent, Not Important</button>
+                </div>
+                <div class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">By Category</div>
+                <div id="mobileTagFilters" class="grid grid-cols-2 gap-2"></div>
+            </div>
+        </div>
+    </div>
 
     <!-- Modal for Task Details -->
     <div id="taskModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
@@ -465,6 +532,7 @@
                     </svg>
                 </button>
             </div>
+            <div id="modalTools" class="mb-4 flex items-center justify-end"></div>
             <div id="modalStats" class="mb-6 grid grid-cols-3 gap-4"></div>
             <div id="modalChart" class="mb-6" style="height: 300px;"></div>
             <div id="modalTasks" class="space-y-3"></div>
@@ -489,6 +557,12 @@
             const dropdown = document.getElementById('dateDropdown');
             if (!dropdown) return;
             dropdown.classList.toggle('hidden');
+            const headerFilter = document.getElementById('headerFilterBtn');
+            if (headerFilter) {
+                const isOpen = !dropdown.classList.contains('hidden');
+                headerFilter.classList.toggle('opacity-0', isOpen);
+                headerFilter.classList.toggle('pointer-events-none', isOpen);
+            }
         };
 
         window.navigateMonth = function(offset) {
@@ -575,6 +649,16 @@
             return trimmed.charAt(0).toUpperCase() + trimmed.slice(1).toLowerCase();
         }
 
+        function hoursToHuman(h) {
+            const total = Math.max(0, Math.round(Number(h || 0) * 60));
+            const hrs = Math.floor(total / 60);
+            const mins = total % 60;
+            if (hrs === 0) return `${mins} min`;
+            if (mins === 0) return `${hrs} hr`;
+            if (mins === 30) return `${hrs}.5 hr`;
+            return `${hrs} hr ${mins} min`;
+        }
+
         function setGlobalLoading(isLoading, errorMessage = '') {
             const loadingEl = document.getElementById('globalLoading');
             const errorEl = document.getElementById('globalError');
@@ -628,6 +712,7 @@
             const hidden = window.hiddenTags || {};
             const tasks = window.modalData.tasks || [];
             const filterType = window.modalFilterType || 'all';
+            const sortKey = window.modalSort || 'duration_desc';
             const getKey = (task) => {
                 if (filterType === 'tag') {
                     if (task.urgent && task.important) return 'Critical';
@@ -640,12 +725,22 @@
             const active = Object.keys(hidden).length
                 ? tasks.filter(t => !hidden[getKey(t)])
                 : tasks.slice();
+            const sorters = {
+                duration_desc: (a, b) => (b.duration || 0) - (a.duration || 0),
+                duration_asc: (a, b) => (a.duration || 0) - (b.duration || 0),
+                tag_az: (a, b) => normalizeTagName(a.tag).localeCompare(normalizeTagName(b.tag)),
+                imp_desc: (a, b) => Number(b.important) - Number(a.important),
+                urg_desc: (a, b) => Number(b.urgent) - Number(a.urgent)
+            };
+            active.sort(sorters[sortKey] || sorters.duration_desc);
             if (active.length === 0) {
                 container.innerHTML = '<div class="text-center py-8 text-gray-400">No tasks found</div>';
                 return;
             }
             let html = '';
             active.forEach(task => {
+                const dur = Number(task.duration || 0);
+                const durText = hoursToHuman(isNaN(dur) ? 0 : dur);
                 const badges = [];
                 if (task.important) badges.push('<span class="px-2 py-1 bg-emerald-50 text-emerald-700 text-xs rounded-full">Important</span>');
                 if (task.urgent) badges.push('<span class="px-2 py-1 bg-red-50 text-red-700 text-xs rounded-full">Urgent</span>');
@@ -659,18 +754,19 @@
                     tagClass = 'px-2 py-0.5 bg-emerald-50 rounded-full text-xs text-emerald-700';
                 }
                 html += `
-                    <div class="luxury-card rounded-xl p-4">
-                        <div class="flex justify-between items-start">
+                    <div class="luxury-card rounded-2xl p-4 md:p-5 mb-3 shadow-lg">
+                        <div class="flex justify-between gap-3">
                             <div class="flex-1">
-                                <div class="font-medium text-gray-900 mb-1">${task.task}</div>
-                                <div class="flex items-center gap-3 text-sm text-gray-500">
-                                    <span>${task.start_time} - ${task.end_time}</span>
+                                <div class="font-medium text-gray-900 mb-1 truncate">${task.task}</div>
+                                <div class="flex flex-wrap items-center gap-2 text-[13px] text-gray-600">
+                                    <span class="text-gray-500">${task.date}</span>
+                                    <span class="text-gray-500">${task.start_time} - ${task.end_time}</span>
                                     <span class="${tagClass}">${displayTag}</span>
                                     ${badges.join('')}
                                 </div>
                             </div>
-                            <div class="text-right">
-                                <div class="font-semibold text-gray-900">${task.duration}h</div>
+                            <div class="shrink-0">
+                                <span class="inline-flex px-2.5 py-1 rounded-full bg-white border border-slate-200 text-xs font-semibold text-gray-700">${durText}</span>
                             </div>
                         </div>
                     </div>
@@ -708,21 +804,60 @@
 
             const statsHtml = `
                 <div class="text-center">
-                    <div class="text-2xl font-light text-gray-900">${growthHours.toFixed(1)}h</div>
+                    <div class="text-2xl font-light text-gray-900">${Number(growthHours || 0).toFixed(1)}h</div>
                     <div class="text-xs text-gray-500 mt-1">${growthPct}% discipline (imp, not urgent)</div>
                 </div>
                 <div class="text-center">
-                    <div class="text-2xl font-light text-gray-900">${drudgeryHours.toFixed(1)}h</div>
+                    <div class="text-2xl font-light text-gray-900">${Number(drudgeryHours || 0).toFixed(1)}h</div>
                     <div class="text-xs text-gray-500 mt-1">${drudgeryPct}% reactive (urg, not important)</div>
                 </div>
                 <div class="text-center">
-                    <div class="text-2xl font-light text-gray-900">${wasteHours.toFixed(1)}h</div>
+                    <div class="text-2xl font-light text-gray-900">${Number(wasteHours || 0).toFixed(1)}h</div>
                     <div class="text-xs text-gray-500 mt-1">${wastePct}% waste (neither)</div>
                 </div>
             `;
             document.getElementById('modalStats').innerHTML = statsHtml;
             const chartContainer = document.getElementById('modalChart');
             chartContainer.innerHTML = '<canvas id="filterChart"></canvas>';
+            const tools = document.getElementById('modalTools');
+            if (tools) {
+                tools.innerHTML = `
+                    <div class="relative">
+                        <button id="modalSortBtn" class="px-3 py-1.5 rounded-full bg-white border border-slate-200 text-xs text-gray-700 shadow-sm active:scale-[0.98] transition">
+                            Sort: <span id="modalSortLabel">${window.modalSortLabel || 'Duration ↓'}</span>
+                        </button>
+                        <div id="modalSortMenu" class="absolute right-0 mt-2 w-40 bg-white rounded-xl shadow-2xl border border-slate-200 hidden">
+                            <div class="dropdown-item" data-key="duration_desc">Duration ↓</div>
+                            <div class="dropdown-item" data-key="duration_asc">Duration ↑</div>
+                            <div class="dropdown-item" data-key="tag_az">Tag A→Z</div>
+                            <div class="dropdown-item" data-key="imp_desc">Important first</div>
+                            <div class="dropdown-item" data-key="urg_desc">Urgent first</div>
+                        </div>
+                    </div>
+                `;
+                const btn = document.getElementById('modalSortBtn');
+                const menu = document.getElementById('modalSortMenu');
+                const label = document.getElementById('modalSortLabel');
+                if (btn && menu && label) {
+                    btn.onclick = () => menu.classList.toggle('hidden');
+                    menu.querySelectorAll('.dropdown-item').forEach(item => {
+                        item.onclick = () => {
+                            const key = item.getAttribute('data-key');
+                            const text = item.textContent;
+                            window.modalSort = key;
+                            window.modalSortLabel = text;
+                            label.textContent = text;
+                            menu.classList.add('hidden');
+                            window.renderModalTasks();
+                        };
+                    });
+                    document.addEventListener('click', (e) => {
+                        if (!e.target.closest('#modalSortBtn') && !e.target.closest('#modalSortMenu')) {
+                            menu.classList.add('hidden');
+                        }
+                    });
+                }
+            }
             if (data.tasks.length > 0) {
                 const ctx = document.getElementById('filterChart').getContext('2d');
                 let labels = [];
@@ -831,6 +966,92 @@
 
         // Initialize on DOM load
         document.addEventListener('DOMContentLoaded', function() {
+            function setActiveNav(id) {
+                ['navHome','navMatrix','navTags','navFilter'].forEach(k => {
+                    const el = document.getElementById(k);
+                    if (!el) return;
+                    if (k === id) {
+                        el.className = 'flex flex-col items-center gap-1 px-3 py-1 rounded-xl text-gray-900 bg-slate-100';
+                    } else {
+                        el.className = 'flex flex-col items-center gap-1 px-3 py-1 rounded-xl text-gray-600';
+                    }
+                });
+            }
+
+            function smoothScrollTo(targetId) {
+                const el = document.getElementById(targetId);
+                if (!el) return;
+                el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+
+            const homeBtn = document.getElementById('navHome');
+            const matrixBtn = document.getElementById('navMatrix');
+            const tagsBtn = document.getElementById('navTags');
+            const filterBtn = document.getElementById('navFilter');
+            if (homeBtn) homeBtn.onclick = () => { smoothScrollTo('top'); setActiveNav('navHome'); };
+            if (matrixBtn) matrixBtn.onclick = () => { smoothScrollTo('matrix'); setActiveNav('navMatrix'); };
+            if (tagsBtn) tagsBtn.onclick = () => { smoothScrollTo('tags'); setActiveNav('navTags'); };
+            if (filterBtn) {
+                filterBtn.onclick = () => {
+                    openMobileFilter();
+                    setActiveNav('navFilter');
+                };
+                ['touchstart','mousedown'].forEach(evt => {
+                    filterBtn.addEventListener(evt, () => filterBtn.classList.add('bg-slate-100'));
+                });
+                ['touchend','mouseup','mouseleave'].forEach(evt => {
+                    filterBtn.addEventListener(evt, () => filterBtn.classList.remove('bg-slate-100'));
+                });
+            }
+
+            function openMobileFilter() {
+                try {
+                    const sheet = document.getElementById('mobileFilterSheet');
+                    const backdrop = document.getElementById('mobileFilterBackdrop');
+                    if (!sheet || !backdrop) return;
+                    backdrop.classList.remove('pointer-events-none');
+                    backdrop.classList.add('opacity-100');
+                    sheet.classList.remove('translate-y-full');
+                } catch (e) {
+                    setGlobalLoading(false, 'Unable to open filters');
+                    console.error(e);
+                }
+            }
+            function closeMobileFilter() {
+                try {
+                    const sheet = document.getElementById('mobileFilterSheet');
+                    const backdrop = document.getElementById('mobileFilterBackdrop');
+                    if (!sheet || !backdrop) return;
+                    sheet.classList.add('translate-y-full');
+                    backdrop.classList.remove('opacity-100');
+                    backdrop.classList.add('pointer-events-none');
+                } catch (e) {
+                    setGlobalLoading(false, 'Unable to close filters');
+                    console.error(e);
+                }
+            }
+            const mobileFilterClose = document.getElementById('mobileFilterClose');
+            const mobileBackdrop = document.getElementById('mobileFilterBackdrop');
+            if (mobileFilterClose) mobileFilterClose.onclick = closeMobileFilter;
+            if (mobileBackdrop) mobileBackdrop.onclick = closeMobileFilter;
+
+            const observerTargets = [
+                { id: 'top', btn: 'navHome' },
+                { id: 'matrix', btn: 'navMatrix' },
+                { id: 'tags', btn: 'navTags' }
+            ].map(({ id, btn }) => ({ el: document.getElementById(id), btn }));
+
+            const io = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const t = observerTargets.find(x => x.el === entry.target);
+                        if (t) setActiveNav(t.btn);
+                    }
+                });
+            }, { root: null, threshold: 0.4 });
+
+            observerTargets.forEach(t => { if (t.el) io.observe(t.el); });
+
             document.addEventListener('click', (e) => {
                 if (!e.target.closest('.dropdown')) {
                     window.closeDropdown();
@@ -849,19 +1070,37 @@
             });
 
             // Load tag filters
-            fetch(`/api/tags?date=${window.currentDate}&period=${window.currentPeriod}`)
-            .then(r => r.json())
+            const tagUrl = `/api/tags?date=${window.currentDate}&period=${window.currentPeriod}`;
+            if (!navigator.onLine) {
+                setGlobalLoading(false, 'You are offline. Filters may be limited.');
+            }
+            fetch(tagUrl)
+            .then(r => {
+                if (!r.ok) throw new Error(`HTTP ${r.status}`);
+                return r.json();
+            })
             .then(data => {
                 const container = document.getElementById('tagFilters');
+                const mobileContainer = document.getElementById('mobileTagFilters');
+                const appendTag = (target, tag) => {
+                    const item = document.createElement(target === mobileContainer ? 'button' : 'div');
+                    item.className = target === mobileContainer 
+                        ? 'px-3 py-2 rounded-xl bg-white border border-slate-200 text-xs text-gray-700 active:scale-[0.98] transition'
+                        : 'dropdown-item';
+                    item.textContent = `${tag.name} (${tag.hours}h)`;
+                    item.onclick = () => window.applyFilter('tag', tag.name, tag.name);
+                    target.appendChild(item);
+                };
                 if (data.tags && data.tags.length > 0) {
                     data.tags.forEach(tag => {
-                        const item = document.createElement('div');
-                        item.className = 'dropdown-item';
-                        item.textContent = `${tag.name} (${tag.hours}h)`;
-                        item.onclick = () => window.applyFilter('tag', tag.name, tag.name);
-                        container.appendChild(item);
+                        if (container) appendTag(container, tag);
+                        if (mobileContainer) appendTag(mobileContainer, tag);
                     });
                 }
+            })
+            .catch(err => {
+                console.error('Tag fetch failed:', err);
+                setGlobalLoading(false, 'Failed to load tags');
             });
 
             window.dateCursor = new Date(window.currentDate);
@@ -915,6 +1154,37 @@
             };
             tagChart.update();
             {% endif %}
+            function hoursToHM(h) {
+                const total = Math.max(0, Math.round(Number(h || 0) * 60));
+                const hrs = Math.floor(total / 60);
+                const mins = total % 60;
+                if (hrs === 0) return `${mins} min`;
+                if (mins === 0) return `${hrs} hr`;
+                return `${hrs} hr ${mins} min`;
+            }
+            const hoverTargets = document.querySelectorAll('.js-hover-hours');
+            hoverTargets.forEach(el => {
+                const raw = el.getAttribute('data-hours') || el.textContent;
+                const h = parseFloat(raw);
+                if (isNaN(h)) return;
+                const decimalText = `${h}h`;
+                const humanText = hoursToHM(h);
+                el.classList.add('hover-swap', 'cursor-default');
+                el.addEventListener('mouseenter', () => {
+                    el.style.opacity = '0';
+                    requestAnimationFrame(() => {
+                        el.textContent = humanText;
+                        el.style.opacity = '1';
+                    });
+                });
+                el.addEventListener('mouseleave', () => {
+                    el.style.opacity = '0';
+                    requestAnimationFrame(() => {
+                        el.textContent = decimalText;
+                        el.style.opacity = '1';
+                    });
+                });
+            });
         }); // End DOMContentLoaded
     </script>
 </body>
