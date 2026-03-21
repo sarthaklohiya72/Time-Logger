@@ -1,4 +1,11 @@
-venv/
+# 1. Security (Crucial)
+.env
+productivity.db
+
+# 2. Python System Files (Junk)
 __pycache__/
-.DS_Store
 *.pyc
+venv/
+
+# 3. Mac System Files (Junk)
+.DS_Store
