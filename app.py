@@ -4,9 +4,9 @@ import logging
 import os
 import re
 import sqlite3
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Iterable, List, Optional, Tuple
-
+from flask import send_file
 import pandas as pd
 import requests
 from dotenv import load_dotenv
@@ -26,8 +26,10 @@ DB_NAME = "productivity.db"
 SHEETY_ENDPOINT_ENV = "SHEETY_ENDPOINT"
 API_AUTH_TOKEN_ENV = "TIME_TRACKER_API_TOKEN"
 SYNC_INTERVAL_SECONDS = int(os.getenv("SYNC_INTERVAL_SECONDS", "300"))
+SYNC_FAIL_COOLDOWN_SECONDS = int(os.getenv("SYNC_FAIL_COOLDOWN_SECONDS", "1800"))
 
 _LAST_SYNC_TS: Optional[datetime] = None
+_LAST_SYNC_FAIL_TS: Optional[datetime] = None
 
 def human_hours(h: float) -> str:
     total = max(0, int(round(float(h) * 60)))
@@ -42,6 +44,14 @@ def human_hours(h: float) -> str:
     return f"{hrs} hours {mins} minutes"
 
 app.jinja_env.filters["human_hours"] = human_hours
+
+def normalize_tag(raw: Optional[str]) -> str:
+    s = str(raw or "").strip()
+    if not s:
+        return "General"
+    s = re.sub(r"[^A-Za-z\s]+$", "", s)
+    s = re.sub(r"\s+", " ", s)
+    return s.title()
 
 def get_db_connection() -> sqlite3.Connection:
     conn = sqlite3.connect(DB_NAME)
@@ -135,7 +145,7 @@ class TimeLogParser:
                 words = meta_part.split()
                 valid_words = [w for w in words if w.lower() not in ["urg", "imp"]]
                 if valid_words:
-                    tag = valid_words[0].capitalize()
+                    tag = normalize_tag(valid_words[0])
 
         end_dt = explicit_time_b if explicit_time_b else client_now
 
@@ -168,22 +178,26 @@ class TimeLogParser:
 
 
 def _should_sync(now: Optional[datetime] = None) -> bool:
-    global _LAST_SYNC_TS
+    global _LAST_SYNC_TS, _LAST_SYNC_FAIL_TS
+    current = now or datetime.now(timezone.utc)
+    if _LAST_SYNC_FAIL_TS and (current - _LAST_SYNC_FAIL_TS).total_seconds() < SYNC_FAIL_COOLDOWN_SECONDS:
+        return False
     if _LAST_SYNC_TS is None:
         return True
-    current = now or datetime.utcnow()
     return (current - _LAST_SYNC_TS).total_seconds() > SYNC_INTERVAL_SECONDS
 
 
 def sync_cloud_data(force: bool = False) -> None:
-    global _LAST_SYNC_TS
+    global _LAST_SYNC_TS, _LAST_SYNC_FAIL_TS
 
+    if os.getenv("DISABLE_CLOUD_SYNC"):
+        return
     url = os.getenv(SHEETY_ENDPOINT_ENV)
     if not url:
         logger.info("SHEETY_ENDPOINT not configured; skipping cloud sync")
         return
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     if not force and not _should_sync(now):
         return
 
@@ -290,8 +304,10 @@ def sync_cloud_data(force: bool = False) -> None:
         _LAST_SYNC_TS = now
         logger.info("Sync complete: strict end times enforced for %s rows", len(final_rows))
     except requests.RequestException as exc:
+        _LAST_SYNC_FAIL_TS = now
         logger.error("Network error during cloud sync: %s", exc)
     except Exception as exc:
+        _LAST_SYNC_FAIL_TS = now
         logger.exception("Unexpected sync error: %s", exc)
 
 
@@ -310,7 +326,7 @@ def fetch_local_data() -> pd.DataFrame:
         for _, row in df.iterrows():
             start = pd.to_datetime(f"{row['start_date']} {row['start_time']}")
             end = pd.to_datetime(f"{row['end_date']} {row['end_time']}")
-            tag_value = row["tags"]
+            tag_value = normalize_tag(row["tags"])
             if tag_value == "General" and not row["urg"] and not row["imp"]:
                 tag_value = "Waste"
             final_rows.append(
@@ -610,6 +626,19 @@ def get_tags():
 
     tag_stats.sort(key=lambda x: x["hours"], reverse=True)
     return jsonify({"tags": tag_stats})
+
+
+@app.route('/download-db')
+def download_db():
+    """
+    Downloads the live production database file.
+    """
+    try:
+        # Ensures the data is fresh before downloading
+        sync_cloud_data()
+        return send_file(DB_NAME, as_attachment=True)
+    except Exception as e:
+        return f"Error downloading DB: {e}"
 
 
 @app.route("/hard-reset")
