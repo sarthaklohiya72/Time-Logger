@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Time Tracker Pro</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.tailwindcss.com" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
     <style>
@@ -154,11 +154,37 @@
             filter: brightness(0.98);
         }
     </style>
+    <style>
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border-width: 0;
+        }
+    </style>
 </head>
-<body>
+<body class="antialiased">
+
+    <div id="globalLoading" class="fixed bottom-4 right-4 z-50 hidden">
+        <div class="px-4 py-2 rounded-full bg-gray-900/90 text-xs text-gray-100 shadow-lg flex items-center gap-2">
+            <span class="h-2 w-2 rounded-full bg-amber-400 animate-pulse"></span>
+            <span>Loading insights…</span>
+        </div>
+    </div>
+
+    <div id="globalError" class="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 hidden">
+        <div class="px-4 py-2 rounded-full bg-red-600 text-xs text-white shadow-lg">
+            <span id="globalErrorText"></span>
+        </div>
+    </div>
 
     <!-- Minimal Header -->
-    <header class="bg-white/90 backdrop-blur border-b border-slate-200 shadow-sm">
+    <header class="bg-white/90 backdrop-blur border-b border-slate-200 shadow-sm" role="banner">
         <div class="max-w-7xl mx-auto px-8 py-6">
             <div class="flex items-center justify-between">
                 <div>
@@ -201,7 +227,7 @@
         </div>
     </header>
 
-    <main class="max-w-7xl mx-auto px-8 py-12">
+    <main class="max-w-7xl mx-auto px-8 py-12" role="main">
         
         <!-- Month Header & Controls -->
         <div class="mb-12">
@@ -378,9 +404,9 @@
                         <h3 class="text-xl font-light text-gray-900 mb-1">Time by Category</h3>
                         <p class="text-xs text-gray-500">Tag distribution</p>
                     </div>
-                    <div class="relative w-full h-64 flex items-center justify-center">
+                    <div class="relative w-full h-64 flex items-center justify-center" role="img" aria-label="Time spent by tag category">
                         {% if tags.labels %}
-                        <canvas id="tagChart"></canvas>
+                        <canvas id="tagChart" aria-hidden="true"></canvas>
                         {% else %}
                         <div class="text-center">
                             <div class="text-5xl text-gray-200 mb-3">∅</div>
@@ -428,8 +454,8 @@
     </main>
 
     <!-- Modal for Task Details -->
-    <div id="taskModal" class="modal">
-        <div class="modal-content p-8">
+    <div id="taskModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+        <div class="modal-content p-8" role="document">
             <div class="flex justify-between items-center mb-6">
                 <h2 id="modalTitle" class="text-2xl font-semibold text-gray-900"></h2>
                 <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600 transition">
@@ -535,12 +561,40 @@
         };
 
         const TAG_COLOR_MAP = {
-            'Work': '#1D4ED8',
-            'Necessity': '#16A34A',
-            'Waste': '#E11D48',
-            'Urgent': '#F97316',
-            'Important': '#6366F1'
+            'Work': '#16A34A',
+            'Important': '#22C55E',
+            'Necessity': '#A16207',
+            'Urgent': '#DC2626',
+            'Waste': '#9F1239'
         };
+
+        function normalizeTagName(tag) {
+            if (!tag) return 'Unlabeled';
+            const trimmed = String(tag).trim();
+            if (!trimmed) return 'Unlabeled';
+            return trimmed.charAt(0).toUpperCase() + trimmed.slice(1).toLowerCase();
+        }
+
+        function setGlobalLoading(isLoading, errorMessage = '') {
+            const loadingEl = document.getElementById('globalLoading');
+            const errorEl = document.getElementById('globalError');
+            const errorText = document.getElementById('globalErrorText');
+            if (!loadingEl || !errorEl || !errorText) return;
+            if (isLoading) {
+                loadingEl.classList.remove('hidden');
+                errorEl.classList.add('hidden');
+                errorText.textContent = '';
+            } else {
+                loadingEl.classList.add('hidden');
+                if (errorMessage) {
+                    errorText.textContent = errorMessage;
+                    errorEl.classList.remove('hidden');
+                    setTimeout(() => {
+                        errorEl.classList.add('hidden');
+                    }, 4000);
+                }
+            }
+        }
 
         window.applyFilter = function(filterType, title, tagName = '') {
             console.log('applyFilter called:', filterType, title, tagName);
@@ -548,7 +602,7 @@
             const url = `/api/tasks?date=${window.currentDate}&period=${window.currentPeriod}&filter=${filterType}${tagName ? '&tag=' + encodeURIComponent(tagName) : ''}`;
             
             console.log('Fetching:', url);
-            
+            setGlobalLoading(true);
             fetch(url)
                 .then(r => {
                     console.log('Response status:', r.status);
@@ -559,11 +613,12 @@
                 })
                 .then(data => {
                     console.log('Data received:', data);
+                    setGlobalLoading(false);
                     window.showModal(title, data, filterType);
                 })
                 .catch(error => {
                     console.error('Error fetching tasks:', error);
-                    alert('Error loading tasks: ' + error.message);
+                    setGlobalLoading(false, 'Error loading tasks: ' + error.message);
                 });
         };
 
@@ -572,8 +627,18 @@
             if (!container || !window.modalData) return;
             const hidden = window.hiddenTags || {};
             const tasks = window.modalData.tasks || [];
+            const filterType = window.modalFilterType || 'all';
+            const getKey = (task) => {
+                if (filterType === 'tag') {
+                    if (task.urgent && task.important) return 'Critical';
+                    if (task.important && !task.urgent) return 'Growth';
+                    if (task.urgent && !task.important) return 'Drudgery';
+                    return 'Waste';
+                }
+                return normalizeTagName(task.tag);
+            };
             const active = Object.keys(hidden).length
-                ? tasks.filter(t => !hidden[t.tag])
+                ? tasks.filter(t => !hidden[getKey(t)])
                 : tasks.slice();
             if (active.length === 0) {
                 container.innerHTML = '<div class="text-center py-8 text-gray-400">No tasks found</div>';
@@ -587,7 +652,11 @@
                 let displayTag = task.tag;
                 let tagClass = 'px-2 py-0.5 bg-gray-100 rounded-full text-xs text-gray-700';
                 if (!task.important && !task.urgent && task.tag === 'Waste') {
-                    tagClass = 'px-2 py-0.5 bg-rose-50 rounded-full text-xs text-rose-700';
+                    tagClass = 'px-2 py-0.5 bg-slate-100 rounded-full text-xs text-slate-700';
+                } else if (task.tag === 'Necessity') {
+                    tagClass = 'px-2 py-0.5 bg-amber-50 rounded-full text-xs text-amber-800';
+                } else if (task.tag === 'Work') {
+                    tagClass = 'px-2 py-0.5 bg-emerald-50 rounded-full text-xs text-emerald-700';
                 }
                 html += `
                     <div class="luxury-card rounded-xl p-4">
@@ -617,36 +686,91 @@
             window.modalFilterType = filterType;
             window.hiddenTags = window.hiddenTags || {};
             document.getElementById('modalTitle').textContent = title;
+
+            const totalHours = data.total_hours || 0;
+            let growthHours = 0;
+            let drudgeryHours = 0;
+            let wasteHours = 0;
+            data.tasks.forEach(task => {
+                const d = task.duration || 0;
+                if (task.important && !task.urgent) {
+                    growthHours += d;
+                } else if (task.urgent && !task.important) {
+                    drudgeryHours += d;
+                } else if (!task.urgent && !task.important) {
+                    wasteHours += d;
+                }
+            });
+            const base = totalHours || (growthHours + drudgeryHours + wasteHours) || 1;
+            const growthPct = Math.round((growthHours / base) * 100);
+            const drudgeryPct = Math.round((drudgeryHours / base) * 100);
+            const wastePct = Math.round((wasteHours / base) * 100);
+
             const statsHtml = `
                 <div class="text-center">
-                    <div class="text-2xl font-light text-gray-900">${data.total_hours}</div>
-                    <div class="text-xs text-gray-500 mt-1">Total Hours</div>
+                    <div class="text-2xl font-light text-gray-900">${growthHours.toFixed(1)}h</div>
+                    <div class="text-xs text-gray-500 mt-1">${growthPct}% discipline (imp, not urgent)</div>
                 </div>
                 <div class="text-center">
-                    <div class="text-2xl font-light text-gray-900">${data.count}</div>
-                    <div class="text-xs text-gray-500 mt-1">Tasks</div>
+                    <div class="text-2xl font-light text-gray-900">${drudgeryHours.toFixed(1)}h</div>
+                    <div class="text-xs text-gray-500 mt-1">${drudgeryPct}% reactive (urg, not important)</div>
                 </div>
                 <div class="text-center">
-                    <div class="text-2xl font-light text-gray-900">${data.tasks.length > 0 ? (data.total_hours / data.count).toFixed(2) : 0}</div>
-                    <div class="text-xs text-gray-500 mt-1">Avg Hours/Task</div>
+                    <div class="text-2xl font-light text-gray-900">${wasteHours.toFixed(1)}h</div>
+                    <div class="text-xs text-gray-500 mt-1">${wastePct}% waste (neither)</div>
                 </div>
             `;
             document.getElementById('modalStats').innerHTML = statsHtml;
             const chartContainer = document.getElementById('modalChart');
             chartContainer.innerHTML = '<canvas id="filterChart"></canvas>';
             if (data.tasks.length > 0) {
-                const tagGroups = {};
-                data.tasks.forEach(task => {
-                    if (!tagGroups[task.tag]) {
-                        tagGroups[task.tag] = 0;
-                    }
-                    tagGroups[task.tag] += task.duration;
-                });
                 const ctx = document.getElementById('filterChart').getContext('2d');
-                const labels = Object.keys(tagGroups);
-                const values = Object.values(tagGroups);
-                const palette = ['#111827', '#16A34A', '#F59E0B', '#E11D48', '#64748B', '#0369A1', '#7C3AED', '#F97316'];
-                const colors = labels.map((label, idx) => TAG_COLOR_MAP[label] || palette[idx % palette.length]);
+                let labels = [];
+                let values = [];
+                let colors = [];
+
+                if (window.modalFilterType === 'tag') {
+                    const quadrantGroups = {
+                        Growth: 0,
+                        Critical: 0,
+                        Drudgery: 0,
+                        Waste: 0
+                    };
+                    data.tasks.forEach(task => {
+                        const d = task.duration || 0;
+                        if (task.urgent && task.important) {
+                            quadrantGroups.Critical += d;
+                        } else if (task.important && !task.urgent) {
+                            quadrantGroups.Growth += d;
+                        } else if (task.urgent && !task.important) {
+                            quadrantGroups.Drudgery += d;
+                        } else {
+                            quadrantGroups.Waste += d;
+                        }
+                    });
+                    labels = ['Growth', 'Critical', 'Drudgery', 'Waste'];
+                    values = labels.map(label => quadrantGroups[label]);
+                    const quadrantColors = {
+                        Growth: '#16A34A',
+                        Critical: '#F97316',
+                        Drudgery: '#6B7280',
+                        Waste: '#9F1239'
+                    };
+                    colors = labels.map(label => quadrantColors[label]);
+                } else {
+                    const tagGroups = {};
+                    data.tasks.forEach(task => {
+                        const key = normalizeTagName(task.tag);
+                        if (!tagGroups[key]) {
+                            tagGroups[key] = 0;
+                        }
+                        tagGroups[key] += task.duration;
+                    });
+                    labels = Object.keys(tagGroups);
+                    values = Object.values(tagGroups);
+                    const palette = ['#111827', '#16A34A', '#F59E0B', '#E11D48', '#64748B', '#0369A1', '#7C3AED', '#F97316'];
+                    colors = labels.map((label, idx) => TAG_COLOR_MAP[label] || palette[idx % palette.length]);
+                }
                 const chart = new Chart(ctx, {
                     type: 'pie',
                     data: {
