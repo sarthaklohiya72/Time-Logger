@@ -191,7 +191,7 @@
         <div class="max-w-7xl mx-auto px-8 py-6">
             <div class="flex items-center justify-between">
                 <div>
-                    <h1 class="text-2xl font-semibold text-gray-900 tracking-tight">Time Tracker Pro</h1>
+                    <h1 id="appTitleBtn" class="text-2xl font-semibold text-gray-900 tracking-tight cursor-pointer" aria-label="Sync and reload">Time Tracker Pro</h1>
                     <p class="text-sm text-gray-500 mt-1">Personal productivity analytics</p>
                 </div>
                 <div class="flex items-center gap-4">
@@ -662,9 +662,9 @@
             document.querySelectorAll('.js-hover-hours').forEach(el => {
                 if (el.__hoverBound) return;
                 const raw = el.getAttribute('data-hours') || el.textContent;
-                const h = parseFloat(raw);
+                const h = Number(raw);
                 if (isNaN(h)) return;
-                const decimalText = `${h}h`;
+                const decimalText = `${window.formatHours(h, 1)}h`;
                 const humanText = hoursToHuman(h);
                 el.classList.add('hover-swap', 'cursor-default');
                 el.addEventListener('mouseenter', () => {
@@ -1238,13 +1238,29 @@
                 if (mins === 0) return `${hrs} hr`;
                 return `${hrs} hr ${mins} min`;
             }
+            const titleBtn = document.getElementById('appTitleBtn');
+            if (titleBtn) {
+                titleBtn.addEventListener('click', async () => {
+                    try {
+                        setGlobalLoading(true, '');
+                        const r = await fetch('/sync-now', { method: 'GET', credentials: 'include' });
+                        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+                        await r.json();
+                        setGlobalLoading(false, '');
+                        window.location.href = `/?date=${window.currentDate}&period=${window.currentPeriod}`;
+                    } catch (e) {
+                        console.error('Manual sync failed', e);
+                        setGlobalLoading(false, 'Failed to sync from cloud');
+                    }
+                });
+            }
             function attachHoverSwap() {
                 document.querySelectorAll('.js-hover-hours').forEach(el => {
                     if (el.__hoverBound) return;
                     const raw = el.getAttribute('data-hours') || el.textContent;
-                    const h = parseFloat(raw);
+                    const h = Number(raw);
                     if (isNaN(h)) return;
-                    const decimalText = `${h}h`;
+                    const decimalText = `${window.formatHours(h, 1)}h`;
                     const humanText = hoursToHM(h);
                     el.classList.add('hover-swap', 'cursor-default');
                     el.addEventListener('mouseenter', () => {
