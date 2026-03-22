@@ -84,6 +84,18 @@ def init_db() -> None:
         logger.exception("DB initialization error: %s", exc)
 
 
+# --- CALL THE FUNCTION HERE ---
+init_db()
+# ------------------------------
+
+class TimeLogParser:
+    def __init__(self) -> None:
+        self.time_pattern = re.compile(
+            r"^(\d{1,2})(?:[:\s]?(\d{2}))?\s*([ap]m)?\s*",
+            re.IGNORECASE,
+        )
+
+
 class TimeLogParser:
     def __init__(self) -> None:
         self.time_pattern = re.compile(
@@ -137,14 +149,18 @@ class TimeLogParser:
             task_name = parts[0].strip()
             meta_part = parts[1].strip()
 
-            meta_lower = meta_part.lower()
-            is_urg = "urg" in meta_lower
-            is_imp = "imp" in meta_lower
+            # 1. Check Flags
+            is_urg = "urg" in meta_part.lower()
+            is_imp = "imp" in meta_part.lower()
 
+            # 2. Extract Tag (The Fix: Explicitly IGNORE urg/imp)
             if meta_part:
                 words = meta_part.split()
+                # Filter out reserved keywords (case insensitive)
                 valid_words = [w for w in words if w.lower() not in ["urg", "imp"]]
+
                 if valid_words:
+                    # Take the first valid word as the tag
                     tag = normalize_tag(valid_words[0])
 
         end_dt = explicit_time_b if explicit_time_b else client_now

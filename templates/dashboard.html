@@ -423,14 +423,15 @@
 
             <!-- Sidebar -->
             <div class="space-y-8">
-                <div class="luxury-card rounded-2xl p-6 md:p-8 h-full flex flex-col {% if tags.labels %}cursor-pointer{% endif %}" id="tags" {% if tags.labels %}onclick="window.applyFilter('all', 'By Category')"{% endif %}>
+                <div class="luxury-card rounded-2xl p-6 md:p-8 h-full flex flex-col overflow-hidden md:overflow-visible {% if tags.labels %}cursor-pointer{% endif %}" id="tags" {% if tags.labels %}onclick="window.applyFilter('all', 'By Category')"{% endif %}>
                     <div class="mb-6">
                         <h3 class="text-xl font-light text-gray-900 mb-1">Time by Category</h3>
                         <p class="text-xs text-gray-500">Tag distribution</p>
                     </div>
-                    <div class="relative w-full flex-1 min-h-[12rem] md:min-h-[14rem] lg:min-h-[16rem] flex items-center justify-center" role="img" aria-label="Time spent by tag category">
+                    <div class="relative w-full h-[12rem] md:h-auto md:flex-1 md:min-h-[14rem] lg:min-h-[16rem] flex items-center justify-center overflow-hidden md:overflow-visible" role="img" aria-label="Time spent by tag category">
                         {% if tags.labels %}
                         <canvas id="tagChart" aria-hidden="true"></canvas>
+                        <div id="mobileTagLegend" class="mt-3 md:hidden flex flex-wrap gap-3 justify-center text-xs text-gray-600"></div>
                         {% else %}
                         <div class="text-center">
                             <div class="text-5xl text-gray-200 mb-3">∅</div>
@@ -440,23 +441,7 @@
                     </div>
                 </div>
 
-                <div class="luxury-card rounded-2xl p-5 md:hidden">
-                    <div class="flex items-center justify-between mb-4">
-                        <div>
-                            <div class="text-xs font-semibold tracking-[0.16em] text-gray-400 uppercase">Focus Time</div>
-                            <div class="mt-2 text-2xl font-light text-gray-900">{{ matrix.q2.hours }}<span class="text-sm text-gray-500 font-normal ml-1">hrs</span></div>
-                        </div>
-                        {% if matrix.q2.hours > 0 %}
-                        <span class="px-3 py-1 rounded-full bg-gray-900 text-amber-300 text-xs font-semibold">Deep work</span>
-                        {% endif %}
-                    </div>
-                    <div class="mb-2">
-                        <div class="w-full h-2 rounded-full bg-[#E7D8C2] overflow-hidden">
-                            <div class="h-full rounded-full bg-gradient-to-r from-[#F8D574] via-[#F5B826] to-[#FCE7A2]" style="width: {{ matrix.q2.pct }}%"></div>
-                        </div>
-                    </div>
-                    <div class="text-xs text-gray-500">You spent {{ matrix.q2.pct }}% of your time on important, non-urgent work.</div>
-                </div>
+                <!-- Mobile-only Focus Time card removed as requested -->
 
                 <!-- Weekly Progress removed for visual consistency -->
             </div>
@@ -635,6 +620,18 @@
         window.viewMatrixQuadrant = function(quadrant, name) {
             console.log('Matrix quadrant clicked:', quadrant, name);
             window.applyFilter(quadrant, name);
+        };
+
+        // Decimal helpers (global) used by modal and charts
+        window.ensureFinite = function(n) {
+            const v = Number(n);
+            return Number.isFinite(v) ? v : 0;
+        };
+        window.minutesFromHours = function(h) {
+            return Math.round(window.ensureFinite(h) * 60);
+        };
+        window.formatHours = function(h, decimals = 1) {
+            return window.ensureFinite(h).toFixed(decimals);
         };
 
         const TAG_COLOR_MAP = {
@@ -823,36 +820,39 @@
             window.hiddenTags = window.hiddenTags || {};
             document.getElementById('modalTitle').textContent = title;
 
-            const totalHours = data.total_hours || 0;
-            let growthHours = 0;
-            let drudgeryHours = 0;
-            let wasteHours = 0;
+            const totalMinutes = ensureFinite(data.total_minutes || 0);
+            let growthMinutes = 0;
+            let drudgeryMinutes = 0;
+            let wasteMinutes = 0;
             data.tasks.forEach(task => {
-                const d = task.duration || 0;
+                const dMin = minutesFromHours(task.duration || 0);
                 if (task.important && !task.urgent) {
-                    growthHours += d;
+                    growthMinutes += dMin;
                 } else if (task.urgent && !task.important) {
-                    drudgeryHours += d;
+                    drudgeryMinutes += dMin;
                 } else if (!task.urgent && !task.important) {
-                    wasteHours += d;
+                    wasteMinutes += dMin;
                 }
             });
-            const base = totalHours || (growthHours + drudgeryHours + wasteHours) || 1;
-            const growthPct = Math.round((growthHours / base) * 100);
-            const drudgeryPct = Math.round((drudgeryHours / base) * 100);
-            const wastePct = Math.round((wasteHours / base) * 100);
+            const baseMinutes = totalMinutes || (growthMinutes + drudgeryMinutes + wasteMinutes) || 1;
+            const growthPct = Math.round((growthMinutes / baseMinutes) * 100);
+            const drudgeryPct = Math.round((drudgeryMinutes / baseMinutes) * 100);
+            const wastePct = Math.round((wasteMinutes / baseMinutes) * 100);
+            const growthHours = growthMinutes / 60;
+            const drudgeryHours = drudgeryMinutes / 60;
+            const wasteHours = wasteMinutes / 60;
 
             const statsHtml = `
                 <div class="text-center">
-                    <div class="text-2xl font-light text-gray-900"><span class="js-hover-hours hover-swap" data-hours="${(growthHours || 0)}">${Number(growthHours || 0).toFixed(1)}h</span></div>
+                    <div class="text-2xl font-light text-gray-900"><span class="js-hover-hours hover-swap" data-hours="${(growthHours || 0)}">${formatHours(growthHours || 0, 1)}h</span></div>
                     <div class="text-xs text-gray-500 mt-1">${growthPct}% discipline (imp, not urgent)</div>
                 </div>
                 <div class="text-center">
-                    <div class="text-2xl font-light text-gray-900"><span class="js-hover-hours hover-swap" data-hours="${(drudgeryHours || 0)}">${Number(drudgeryHours || 0).toFixed(1)}h</span></div>
+                    <div class="text-2xl font-light text-gray-900"><span class="js-hover-hours hover-swap" data-hours="${(drudgeryHours || 0)}">${formatHours(drudgeryHours || 0, 1)}h</span></div>
                     <div class="text-xs text-gray-500 mt-1">${drudgeryPct}% reactive (urg, not important)</div>
                 </div>
                 <div class="text-center">
-                    <div class="text-2xl font-light text-gray-900"><span class="js-hover-hours hover-swap" data-hours="${(wasteHours || 0)}">${Number(wasteHours || 0).toFixed(1)}h</span></div>
+                    <div class="text-2xl font-light text-gray-900"><span class="js-hover-hours hover-swap" data-hours="${(wasteHours || 0)}">${formatHours(wasteHours || 0, 1)}h</span></div>
                     <div class="text-xs text-gray-500 mt-1">${wastePct}% waste (neither)</div>
                 </div>
             `;
@@ -1148,53 +1148,88 @@
             window.renderDateGrid();
 
             {% if tags.labels %}
-            const tagCtx = document.getElementById('tagChart').getContext('2d');
+            const tagCanvas = document.getElementById('tagChart');
+            const tagCtx = tagCanvas ? tagCanvas.getContext('2d') : null;
+            const isMobile = window.matchMedia('(max-width: 767px)').matches;
             const tagPalette = ['#111827', '#16A34A', '#F59E0B', '#E11D48', '#64748B', '#0369A1', '#7C3AED', '#F97316'];
             const tagLabels = {{ tags.labels | safe }};
             const tagColors = tagLabels.map((label, idx) => TAG_COLOR_MAP[label] || tagPalette[idx % tagPalette.length]);
-            const tagChart = new Chart(tagCtx, {
-                type: 'doughnut',
-                data: {
-                    labels: tagLabels,
-                    datasets: [{
-                        data: {{ tags.data | safe }},
-                        backgroundColor: tagColors,
-                        borderWidth: 0,
-                        hoverOffset: 8
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    cutout: '75%',
-                    plugins: {
-                        legend: {
-                            position: 'bottom',
-                            labels: {
-                                usePointStyle: true,
-                                font: { family: 'Inter', size: 11, weight: '400' },
-                                padding: 15,
-                                color: '#6B7280'
+            try {
+                const tagChart = new Chart(tagCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: tagLabels,
+                        datasets: [{
+                            data: {{ tags.data | safe }},
+                            backgroundColor: tagColors,
+                            borderWidth: 0,
+                            hoverOffset: 8
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        cutout: isMobile ? '80%' : '75%',
+                        plugins: {
+                            legend: {
+                                display: !isMobile,
+                                position: 'bottom',
+                                labels: {
+                                    usePointStyle: true,
+                                    font: { family: 'Inter', size: 11, weight: '400' },
+                                    padding: 15,
+                                    color: '#6B7280'
+                                }
+                            },
+                            tooltip: {
+                                backgroundColor: 'rgba(31, 41, 55, 0.95)',
+                                padding: 12,
+                                titleFont: { family: 'Inter', size: 12, weight: '500' },
+                                bodyFont: { family: 'Inter', size: 11 },
+                                cornerRadius: 8
                             }
-                        },
-                        tooltip: {
-                            backgroundColor: 'rgba(31, 41, 55, 0.95)',
-                            padding: 12,
-                            titleFont: { family: 'Inter', size: 12, weight: '500' },
-                            bodyFont: { family: 'Inter', size: 11 },
-                            cornerRadius: 8
                         }
                     }
+                });
+                tagChart.options.onClick = function(evt, elements) {
+                    if (!elements || !elements.length) return;
+                    const index = elements[0].index;
+                    const label = tagChart.data.labels[index];
+                    window.applyFilter('tag', label, label);
+                };
+                tagChart.update();
+                const mobileLegend = document.getElementById('mobileTagLegend');
+                if (isMobile && mobileLegend) {
+                    tagChart.options.plugins.legend.display = false;
+                    tagChart.update();
+                    mobileLegend.innerHTML = tagLabels.map((label, idx) => (
+                        `<span class="inline-flex items-center gap-1">
+                            <span class="inline-block w-2.5 h-2.5 rounded-full" style="background:${tagColors[idx]}"></span>
+                            ${label}
+                        </span>`
+                    )).join('');
                 }
-            });
-            tagChart.options.onClick = function(evt, elements) {
-                if (!elements || !elements.length) return;
-                const index = elements[0].index;
-                const label = tagChart.data.labels[index];
-                window.applyFilter('tag', label, label);
-            };
-            tagChart.update();
+            } catch (e) {
+                const wrap = document.getElementById('tags');
+                if (wrap) {
+                    const holder = wrap.querySelector('[aria-label=\"Time spent by tag category\"]');
+                    if (holder) {
+                        holder.innerHTML = '<div class=\"text-center text-xs text-gray-400\">Unable to render chart</div>';
+                    }
+                }
+            }
             {% endif %}
+            // Decimal handling helpers: sum in minutes to avoid float drift, format using fixed decimals
+            function ensureFinite(n) {
+                const v = Number(n);
+                return Number.isFinite(v) ? v : 0;
+            }
+            function minutesFromHours(h) {
+                return Math.round(ensureFinite(h) * 60);
+            }
+            function formatHours(h, decimals = 1) {
+                return ensureFinite(h).toFixed(decimals);
+            }
             function hoursToHM(h) {
                 const total = Math.max(0, Math.round(Number(h || 0) * 60));
                 const hrs = Math.floor(total / 60);
