@@ -349,117 +349,151 @@
                     <!-- Row 1: Important & Urgent | Important & !Urgent | Important -->
                     
                     <!-- Critical: Important & Urgent - Yellow/Amber (matters but stressful) -->
-                    <div class="matrix-card luxury-card rounded-xl md:rounded-2xl p-3 md:p-5 bg-gradient-to-br from-amber-50/80 to-yellow-50/40 border-amber-200/60 hover:shadow-lg transition-all duration-300" onclick="viewMatrixQuadrant('q1', 'Critical')">
-                        <div class="flex justify-between items-start mb-2 md:mb-4">
-                            <div>
-                                <h4 class="text-amber-800 font-semibold text-sm md:text-base mb-0.5">Critical</h4>
-                                <p class="text-[8px] md:text-[10px] text-amber-700/80 font-medium uppercase tracking-wider">Important & Urgent</p>
+                    <div class="matrix-card luxury-card rounded-xl md:rounded-2xl p-3 md:p-5 bg-gradient-to-br from-amber-50/80 to-yellow-50/40 border-amber-200/60 hover:shadow-lg transition-all duration-300 relative overflow-hidden" onclick="viewMatrixQuadrant('q1', 'Critical')">
+                        <div class="absolute bottom-0 left-0 h-1.5 bg-amber-400/40 transition-all duration-500" style="width: {{ matrix.q1.pct }}%"></div>
+                        <div class="relative z-10">
+                            <div class="flex justify-between items-start mb-2 md:mb-4">
+                                <div>
+                                    <h4 class="text-amber-800 font-semibold text-sm md:text-base mb-0.5">Critical</h4>
+                                    <p class="text-[8px] md:text-[10px] text-amber-700/80 font-medium uppercase tracking-wider">Important & Urgent</p>
+                                </div>
+                                <div class="text-lg md:text-xl text-amber-400/70">◆</div>
                             </div>
-                            <div class="text-lg md:text-xl text-amber-400/70">◆</div>
+                            <div class="text-2xl md:text-3xl font-light text-gray-900 mb-1"><span class="js-hover-hours" data-hours="{{ matrix.q1.hours }}">{{ matrix.q1.hours }}h</span></div>
+                            <div class="text-[10px] md:text-xs font-medium text-amber-700/70">{{ matrix.q1.pct }}%</div>
                         </div>
-                        <div class="text-2xl md:text-3xl font-light text-gray-900 mb-1"><span class="js-hover-hours" data-hours="{{ matrix.q1.hours }}">{{ matrix.q1.hours }}h</span></div>
-                        <div class="text-[10px] md:text-xs font-medium text-amber-700/70">{{ matrix.q1.pct }}%</div>
                     </div>
 
                     <!-- Growth: Important & !Urgent - Soft Green/Mint (best time, calm growth, self-control) -->
-                    <div class="matrix-card luxury-card rounded-xl md:rounded-2xl p-3 md:p-5 bg-gradient-to-br from-green-100/70 to-emerald-50/50 border-green-200/60 hover:shadow-lg transition-all duration-300" onclick="viewMatrixQuadrant('q2', 'Growth')">
-                        <div class="flex justify-between items-start mb-2 md:mb-4">
-                            <div>
-                                <h4 class="text-green-800 font-semibold text-sm md:text-base mb-0.5">Growth</h4>
-                                <p class="text-[8px] md:text-[10px] text-green-700/90 font-medium uppercase tracking-wider">Important & Not Urgent</p>
+                    <div class="matrix-card luxury-card rounded-xl md:rounded-2xl p-3 md:p-5 bg-gradient-to-br from-green-100/70 to-emerald-50/50 border-green-200/60 hover:shadow-lg transition-all duration-300 relative overflow-hidden" onclick="viewMatrixQuadrant('q2', 'Growth')">
+                        <div class="absolute bottom-0 left-0 h-1.5 bg-green-400/40 transition-all duration-500" style="width: {{ matrix.q2.pct }}%"></div>
+                        <div class="relative z-10">
+                            <div class="flex justify-between items-start mb-2 md:mb-4">
+                                <div>
+                                    <h4 class="text-green-800 font-semibold text-sm md:text-base mb-0.5">Growth</h4>
+                                    <p class="text-[8px] md:text-[10px] text-green-700/90 font-medium uppercase tracking-wider">Important & Not Urgent</p>
+                                </div>
+                                <div class="text-lg md:text-xl text-green-400/80">★</div>
                             </div>
-                            <div class="text-lg md:text-xl text-green-400/80">★</div>
+                            <div class="text-2xl md:text-3xl font-light text-gray-900 mb-1"><span class="js-hover-hours" data-hours="{{ matrix.q2.hours }}">{{ matrix.q2.hours }}h</span></div>
+                            <div class="text-[10px] md:text-xs font-medium text-green-700/80">{{ matrix.q2.pct }}%</div>
                         </div>
-                        <div class="text-2xl md:text-3xl font-light text-gray-900 mb-1"><span class="js-hover-hours" data-hours="{{ matrix.q2.hours }}">{{ matrix.q2.hours }}h</span></div>
-                        <div class="text-[10px] md:text-xs font-medium text-green-700/80">{{ matrix.q2.pct }}%</div>
                     </div>
 
                     <!-- Important (All) - Blue (neutral, trustworthy aggregate) -->
-                    <div class="matrix-card luxury-card rounded-xl md:rounded-2xl p-3 md:p-5 bg-gradient-to-br from-blue-50/70 to-indigo-50/40 border-blue-200/60 hover:shadow-lg transition-all duration-300" onclick="viewMatrixQuadrant('important', 'Important')">
-                        <div class="flex justify-between items-start mb-2 md:mb-4">
-                            <div>
-                                <h4 class="text-blue-800 font-semibold text-sm md:text-base mb-0.5">Important</h4>
-                                <p class="text-[8px] md:text-[10px] text-blue-700/80 font-medium uppercase tracking-wider">All Important</p>
+                    <div class="matrix-card luxury-card rounded-xl md:rounded-2xl p-3 md:p-5 bg-gradient-to-br from-blue-50/70 to-indigo-50/40 border-blue-200/60 hover:shadow-lg transition-all duration-300 relative overflow-hidden" onclick="viewMatrixQuadrant('important', 'Important')">
+                        <div class="absolute bottom-0 left-0 h-1.5 bg-blue-400/40 transition-all duration-500" style="width: {{ matrix.important.pct }}%"></div>
+                        <div class="relative z-10">
+                            <div class="flex justify-between items-start mb-2 md:mb-4">
+                                <div>
+                                    <h4 class="text-blue-800 font-semibold text-sm md:text-base mb-0.5">Important</h4>
+                                    <p class="text-[8px] md:text-[10px] text-blue-700/80 font-medium uppercase tracking-wider">All Important</p>
+                                </div>
+                                <div class="text-lg md:text-xl text-blue-400/70">●</div>
                             </div>
-                            <div class="text-lg md:text-xl text-blue-400/70">●</div>
+                            <div class="text-2xl md:text-3xl font-light text-gray-900 mb-1"><span class="js-hover-hours" data-hours="{{ matrix.important.hours }}">{{ matrix.important.hours }}h</span></div>
+                            <div class="text-[10px] md:text-xs font-medium text-blue-700/70">{{ matrix.important.pct }}%</div>
                         </div>
-                        <div class="text-2xl md:text-3xl font-light text-gray-900 mb-1"><span class="js-hover-hours" data-hours="{{ matrix.important.hours }}">{{ matrix.important.hours }}h</span></div>
-                        <div class="text-[10px] md:text-xs font-medium text-blue-700/70">{{ matrix.important.pct }}%</div>
                     </div>
 
                     <!-- Row 2: Urgent & !Important | !Important & !Urgent | !Important -->
                     
                     <!-- Drudgery: Urgent & !Important - Grey/Dull Steel (lifeless obligation) -->
-                    <div class="matrix-card luxury-card rounded-xl md:rounded-2xl p-3 md:p-5 bg-gradient-to-br from-slate-200/70 to-zinc-100/50 border-slate-300/60 hover:shadow-lg transition-all duration-300" onclick="viewMatrixQuadrant('q3', 'Drudgery')">
-                        <div class="flex justify-between items-start mb-2 md:mb-4">
-                            <div>
-                                <h4 class="text-slate-600 font-semibold text-sm md:text-base mb-0.5">Drudgery</h4>
-                                <p class="text-[8px] md:text-[10px] text-slate-500/80 font-medium uppercase tracking-wider">Urgent & Not Important</p>
+                    <div class="matrix-card luxury-card rounded-xl md:rounded-2xl p-3 md:p-5 bg-gradient-to-br from-slate-200/70 to-zinc-100/50 border-slate-300/60 hover:shadow-lg transition-all duration-300 relative overflow-hidden" onclick="viewMatrixQuadrant('q3', 'Drudgery')">
+                        <div class="absolute bottom-0 left-0 h-1.5 bg-slate-400/40 transition-all duration-500" style="width: {{ matrix.q3.pct }}%"></div>
+                        <div class="relative z-10">
+                            <div class="flex justify-between items-start mb-2 md:mb-4">
+                                <div>
+                                    <h4 class="text-slate-600 font-semibold text-sm md:text-base mb-0.5">Drudgery</h4>
+                                    <p class="text-[8px] md:text-[10px] text-slate-500/80 font-medium uppercase tracking-wider">Urgent & Not Important</p>
+                                </div>
+                                <div class="text-lg md:text-xl text-slate-400/70">⛓</div>
                             </div>
-                            <div class="text-lg md:text-xl text-slate-400/70">⛓</div>
+                            <div class="text-2xl md:text-3xl font-light text-slate-700 mb-1"><span class="js-hover-hours" data-hours="{{ matrix.q3.hours }}">{{ matrix.q3.hours }}h</span></div>
+                            <div class="text-[10px] md:text-xs font-medium text-slate-500/70">{{ matrix.q3.pct }}%</div>
                         </div>
-                        <div class="text-2xl md:text-3xl font-light text-slate-700 mb-1"><span class="js-hover-hours" data-hours="{{ matrix.q3.hours }}">{{ matrix.q3.hours }}h</span></div>
-                        <div class="text-[10px] md:text-xs font-medium text-slate-500/70">{{ matrix.q3.pct }}%</div>
                     </div>
 
                     <!-- Waste: !Important & !Urgent - Muted/Desaturated Red (time decay, subtle warning) -->
-                    <div class="matrix-card luxury-card rounded-xl md:rounded-2xl p-3 md:p-5 bg-gradient-to-br from-red-100/60 to-rose-50/40 border-red-200/50 hover:shadow-lg transition-all duration-300" onclick="viewMatrixQuadrant('q4', 'Waste')">
-                        <div class="flex justify-between items-start mb-2 md:mb-4">
-                            <div>
-                                <h4 class="text-red-700 font-semibold text-sm md:text-base mb-0.5">Waste</h4>
-                                <p class="text-[8px] md:text-[10px] text-red-600/80 font-medium uppercase tracking-wider">Not Important & Not Urgent</p>
+                    <div class="matrix-card luxury-card rounded-xl md:rounded-2xl p-3 md:p-5 bg-gradient-to-br from-red-100/60 to-rose-50/40 border-red-200/50 hover:shadow-lg transition-all duration-300 relative overflow-hidden" onclick="viewMatrixQuadrant('q4', 'Waste')">
+                        <div class="absolute bottom-0 left-0 h-1.5 bg-red-400/40 transition-all duration-500" style="width: {{ matrix.q4.pct }}%"></div>
+                        <div class="relative z-10">
+                            <div class="flex justify-between items-start mb-2 md:mb-4">
+                                <div>
+                                    <h4 class="text-red-700 font-semibold text-sm md:text-base mb-0.5">Waste</h4>
+                                    <p class="text-[8px] md:text-[10px] text-red-600/80 font-medium uppercase tracking-wider">Not Important & Not Urgent</p>
+                                </div>
+                                <div class="text-lg md:text-xl text-red-300/70">×</div>
                             </div>
-                            <div class="text-lg md:text-xl text-red-300/70">×</div>
+                            <div class="text-2xl md:text-3xl font-light text-gray-900 mb-1"><span class="js-hover-hours" data-hours="{{ matrix.q4.hours }}">{{ matrix.q4.hours }}h</span></div>
+                            <div class="text-[10px] md:text-xs font-medium text-red-600/70">{{ matrix.q4.pct }}%</div>
                         </div>
-                        <div class="text-2xl md:text-3xl font-light text-gray-900 mb-1"><span class="js-hover-hours" data-hours="{{ matrix.q4.hours }}">{{ matrix.q4.hours }}h</span></div>
-                        <div class="text-[10px] md:text-xs font-medium text-red-600/70">{{ matrix.q4.pct }}%</div>
                     </div>
 
                     <!-- Not Important (All) - Very Light Neutral (quiet, low-value total) -->
-                    <div class="matrix-card luxury-card rounded-xl md:rounded-2xl p-3 md:p-5 bg-gradient-to-br from-neutral-100/50 to-stone-50/30 border-neutral-200/50 hover:shadow-lg transition-all duration-300" onclick="viewMatrixQuadrant('not_important', 'Not Important')">
-                        <div class="flex justify-between items-start mb-2 md:mb-4">
-                            <div>
-                                <h4 class="text-neutral-500 font-semibold text-sm md:text-base mb-0.5">Not Important</h4>
-                                <p class="text-[8px] md:text-[10px] text-neutral-400/80 font-medium uppercase tracking-wider">All Not Important</p>
+                    <div class="matrix-card luxury-card rounded-xl md:rounded-2xl p-3 md:p-5 bg-gradient-to-br from-neutral-100/50 to-stone-50/30 border-neutral-200/50 hover:shadow-lg transition-all duration-300 relative overflow-hidden" onclick="viewMatrixQuadrant('not_important', 'Not Important')">
+                        <div class="absolute bottom-0 left-0 h-1.5 bg-neutral-400/40 transition-all duration-500" style="width: {{ matrix.not_important.pct }}%"></div>
+                        <div class="relative z-10">
+                            <div class="flex justify-between items-start mb-2 md:mb-4">
+                                <div>
+                                    <h4 class="text-neutral-500 font-semibold text-sm md:text-base mb-0.5">Not Important</h4>
+                                    <p class="text-[8px] md:text-[10px] text-neutral-400/80 font-medium uppercase tracking-wider">All Not Important</p>
+                                </div>
+                                <div class="text-lg md:text-xl text-neutral-300/70">○</div>
                             </div>
-                            <div class="text-lg md:text-xl text-neutral-300/70">○</div>
+                            <div class="text-2xl md:text-3xl font-light text-neutral-600 mb-1"><span class="js-hover-hours" data-hours="{{ matrix.not_important.hours }}">{{ matrix.not_important.hours }}h</span></div>
+                            <div class="text-[10px] md:text-xs font-medium text-neutral-400/70">{{ matrix.not_important.pct }}%</div>
                         </div>
-                        <div class="text-2xl md:text-3xl font-light text-neutral-600 mb-1"><span class="js-hover-hours" data-hours="{{ matrix.not_important.hours }}">{{ matrix.not_important.hours }}h</span></div>
-                        <div class="text-[10px] md:text-xs font-medium text-neutral-400/70">{{ matrix.not_important.pct }}%</div>
                     </div>
 
                     <!-- Row 3: Urgent | !Urgent | (empty) -->
                     
                     <!-- Urgent (All) - Orange/Amber (pressure, energy drain) -->
-                    <div class="matrix-card luxury-card rounded-xl md:rounded-2xl p-3 md:p-5 bg-gradient-to-br from-orange-100/70 to-amber-50/40 border-orange-200/60 hover:shadow-lg transition-all duration-300" onclick="viewMatrixQuadrant('urgent', 'Urgent')">
-                        <div class="flex justify-between items-start mb-2 md:mb-4">
-                            <div>
-                                <h4 class="text-orange-800 font-semibold text-sm md:text-base mb-0.5">Urgent</h4>
-                                <p class="text-[8px] md:text-[10px] text-orange-700/80 font-medium uppercase tracking-wider">All Urgent</p>
+                    <div class="matrix-card luxury-card rounded-xl md:rounded-2xl p-3 md:p-5 bg-gradient-to-br from-orange-100/70 to-amber-50/40 border-orange-200/60 hover:shadow-lg transition-all duration-300 relative overflow-hidden" onclick="viewMatrixQuadrant('urgent', 'Urgent')">
+                        <div class="absolute bottom-0 left-0 h-1.5 bg-orange-400/40 transition-all duration-500" style="width: {{ matrix.urgent.pct }}%"></div>
+                        <div class="relative z-10">
+                            <div class="flex justify-between items-start mb-2 md:mb-4">
+                                <div>
+                                    <h4 class="text-orange-800 font-semibold text-sm md:text-base mb-0.5">Urgent</h4>
+                                    <p class="text-[8px] md:text-[10px] text-orange-700/80 font-medium uppercase tracking-wider">All Urgent</p>
+                                </div>
+                                <div class="text-lg md:text-xl text-orange-400/70">⚡</div>
                             </div>
-                            <div class="text-lg md:text-xl text-orange-400/70">⚡</div>
+                            <div class="text-2xl md:text-3xl font-light text-gray-900 mb-1"><span class="js-hover-hours" data-hours="{{ matrix.urgent.hours }}">{{ matrix.urgent.hours }}h</span></div>
+                            <div class="text-[10px] md:text-xs font-medium text-orange-700/70">{{ matrix.urgent.pct }}%</div>
                         </div>
-                        <div class="text-2xl md:text-3xl font-light text-gray-900 mb-1"><span class="js-hover-hours" data-hours="{{ matrix.urgent.hours }}">{{ matrix.urgent.hours }}h</span></div>
-                        <div class="text-[10px] md:text-xs font-medium text-orange-700/70">{{ matrix.urgent.pct }}%</div>
                     </div>
 
                     <!-- Not Urgent (All) - Soft Teal/Green (calm, time freedom) -->
-                    <div class="matrix-card luxury-card rounded-xl md:rounded-2xl p-3 md:p-5 bg-gradient-to-br from-teal-50/70 to-green-50/40 border-teal-200/60 hover:shadow-lg transition-all duration-300" onclick="viewMatrixQuadrant('not_urgent', 'Not Urgent')">
-                        <div class="flex justify-between items-start mb-2 md:mb-4">
-                            <div>
-                                <h4 class="text-teal-800 font-semibold text-sm md:text-base mb-0.5">Not Urgent</h4>
-                                <p class="text-[8px] md:text-[10px] text-teal-700/80 font-medium uppercase tracking-wider">All Not Urgent</p>
+                    <div class="matrix-card luxury-card rounded-xl md:rounded-2xl p-3 md:p-5 bg-gradient-to-br from-teal-50/70 to-green-50/40 border-teal-200/60 hover:shadow-lg transition-all duration-300 relative overflow-hidden" onclick="viewMatrixQuadrant('not_urgent', 'Not Urgent')">
+                        <div class="absolute bottom-0 left-0 h-1.5 bg-teal-400/40 transition-all duration-500" style="width: {{ matrix.not_urgent.pct }}%"></div>
+                        <div class="relative z-10">
+                            <div class="flex justify-between items-start mb-2 md:mb-4">
+                                <div>
+                                    <h4 class="text-teal-800 font-semibold text-sm md:text-base mb-0.5">Not Urgent</h4>
+                                    <p class="text-[8px] md:text-[10px] text-teal-700/80 font-medium uppercase tracking-wider">All Not Urgent</p>
+                                </div>
+                                <div class="text-lg md:text-xl text-teal-400/70">◇</div>
                             </div>
-                            <div class="text-lg md:text-xl text-teal-400/70">◇</div>
+                            <div class="text-2xl md:text-3xl font-light text-gray-900 mb-1"><span class="js-hover-hours" data-hours="{{ matrix.not_urgent.hours }}">{{ matrix.not_urgent.hours }}h</span></div>
+                            <div class="text-[10px] md:text-xs font-medium text-teal-700/70">{{ matrix.not_urgent.pct }}%</div>
                         </div>
-                        <div class="text-2xl md:text-3xl font-light text-gray-900 mb-1"><span class="js-hover-hours" data-hours="{{ matrix.not_urgent.hours }}">{{ matrix.not_urgent.hours }}h</span></div>
-                        <div class="text-[10px] md:text-xs font-medium text-teal-700/70">{{ matrix.not_urgent.pct }}%</div>
                     </div>
 
                     <!-- Total - Neutral Grey/Beige (pure fact, no emotion) -->
-                    <div class="luxury-card rounded-xl md:rounded-2xl p-3 md:p-5 bg-gradient-to-br from-stone-100/50 to-neutral-50/30 border-stone-200/40 flex flex-col justify-center items-center col-span-2 md:col-span-1">
-                        <div class="text-[8px] md:text-[10px] text-stone-500 font-medium uppercase tracking-wider mb-1 md:mb-2">Total</div>
-                        <div class="text-xl md:text-2xl font-light text-stone-700"><span class="js-hover-hours" data-hours="{{ matrix.total_hours }}">{{ matrix.total_hours }}h</span></div>
+                    <div class="matrix-card luxury-card rounded-xl md:rounded-2xl p-3 md:p-5 bg-gradient-to-br from-stone-100/50 to-neutral-50/30 border-stone-200/40 hover:shadow-lg transition-all duration-300 relative overflow-hidden col-span-2 md:col-span-1">
+                        <div class="absolute bottom-0 left-0 h-1.5 bg-stone-300/40 transition-all duration-500" style="width: 100%"></div>
+                        <div class="relative z-10">
+                            <div class="flex justify-between items-start mb-2 md:mb-4">
+                                <div>
+                                    <h4 class="text-stone-600 font-semibold text-sm md:text-base mb-0.5">Total</h4>
+                                    <p class="text-[8px] md:text-[10px] text-stone-500/80 font-medium uppercase tracking-wider">All Time Logged</p>
+                                </div>
+                                <div class="text-lg md:text-xl text-stone-400/70">∑</div>
+                            </div>
+                            <div class="text-2xl md:text-3xl font-light text-stone-700 mb-1"><span class="js-hover-hours" data-hours="{{ matrix.total_hours }}">{{ matrix.total_hours }}h</span></div>
+                            <div class="text-[10px] md:text-xs font-medium text-stone-500/70">100%</div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -640,11 +674,11 @@
         };
 
         const TAG_COLOR_MAP = {
-            'Work': '#16A34A',
-            'Necessity': '#A16207',
-            'Soul': '#7C3AED',
-            'Rest': '#0EA5A4',
-            'Waste': '#9F1239'
+            'Work': '#10B981',
+            'Necessity': '#F59E0B',
+            'Soul': '#6366F1',
+            'Rest': '#C4B5FD',
+            'Waste': '#DC2626'
         };
 
         const SPECIAL_TAGS = Object.keys(TAG_COLOR_MAP);
@@ -1055,16 +1089,28 @@
                         labels: labels,
                         datasets: [{
                             data: values,
-                            backgroundColor: colors
+                            backgroundColor: colors,
+                            borderWidth: 2,
+                            borderColor: '#FFFFFF',
+                            hoverOffset: 10,
+                            hoverBorderWidth: 3
                         }]
                     },
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
+                        spacing: 3,
                         plugins: {
                             legend: {
                                 position: 'bottom',
                                 labels: {
+                                    font: { family: 'Inter', size: 11, weight: '500' },
+                                    padding: 14,
+                                    color: '#374151',
+                                    usePointStyle: true,
+                                    pointStyle: 'circle',
+                                    boxWidth: 10,
+                                    boxHeight: 10,
                                     generateLabels: function(chart) {
                                         const labels = chart.data.labels || [];
                                         const data = chart.data.datasets[0]?.data || [];
@@ -1106,11 +1152,15 @@
                                 }
                             },
                             tooltip: {
-                                backgroundColor: 'rgba(31, 41, 55, 0.95)',
-                                padding: 12,
-                                titleFont: { family: 'Inter', size: 12, weight: '500' },
-                                bodyFont: { family: 'Inter', size: 11 },
-                                cornerRadius: 8,
+                                backgroundColor: 'rgba(17, 24, 39, 0.96)',
+                                padding: 14,
+                                titleFont: { family: 'Inter', size: 13, weight: '600' },
+                                bodyFont: { family: 'Inter', size: 12, weight: '400' },
+                                cornerRadius: 10,
+                                displayColors: true,
+                                boxWidth: 10,
+                                boxHeight: 10,
+                                boxPadding: 6,
                                 callbacks: {
                                     label: function(context) {
                                         const raw = context.label;
@@ -1282,14 +1332,17 @@
                             datasets: [{
                                 data: tagData,
                                 backgroundColor: tagColors,
-                                borderWidth: 0,
-                                hoverOffset: 8
+                                borderWidth: 2,
+                                borderColor: '#FFFFFF',
+                                hoverOffset: 12,
+                                hoverBorderWidth: 3
                             }]
                         },
                         options: {
                             responsive: true,
                             maintainAspectRatio: false,
-                            cutout: isMobile ? '80%' : '75%',
+                            cutout: isMobile ? '70%' : '68%',
+                            spacing: 3,
                             plugins: {
                                 legend: {
                                     display: !isMobile,
@@ -1297,18 +1350,24 @@
                                     maxWidth: 280,
                                     labels: {
                                         usePointStyle: true,
-                                        font: { family: 'Inter', size: 10, weight: '400' },
-                                        padding: 10,
-                                        color: '#6B7280',
-                                        boxWidth: 8
+                                        pointStyle: 'circle',
+                                        font: { family: 'Inter', size: 11, weight: '500' },
+                                        padding: 14,
+                                        color: '#374151',
+                                        boxWidth: 10,
+                                        boxHeight: 10
                                     }
                                 },
                                 tooltip: {
-                                    backgroundColor: 'rgba(31, 41, 55, 0.95)',
-                                    padding: 12,
-                                    titleFont: { family: 'Inter', size: 12, weight: '500' },
-                                    bodyFont: { family: 'Inter', size: 11 },
-                                    cornerRadius: 8,
+                                    backgroundColor: 'rgba(17, 24, 39, 0.96)',
+                                    padding: 14,
+                                    titleFont: { family: 'Inter', size: 13, weight: '600' },
+                                    bodyFont: { family: 'Inter', size: 12, weight: '400' },
+                                    cornerRadius: 10,
+                                    displayColors: true,
+                                    boxWidth: 10,
+                                    boxHeight: 10,
+                                    boxPadding: 6,
                                     callbacks: {
                                         label: function(context) {
                                             const label = context.label || '';
