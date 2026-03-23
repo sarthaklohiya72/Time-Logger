@@ -11,9 +11,9 @@ class TagNormalizationTests(unittest.TestCase):
         self.assertEqual(normalize_tag("  work   "), "Work")
         self.assertEqual(normalize_tag("wOrKoUt"), "Workout")
 
-    def test_empty_defaults_to_general(self):
-        self.assertEqual(normalize_tag(""), "General")
-        self.assertEqual(normalize_tag(None), "General")
+    def test_empty_defaults_to_empty_string(self):
+        self.assertEqual(normalize_tag(""), "")
+        self.assertEqual(normalize_tag(None), "")
 
 if __name__ == "__main__":
     unittest.main()

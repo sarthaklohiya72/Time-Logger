@@ -256,35 +256,14 @@
                     <p class="text-gray-700 md:text-gray-500 text-sm">Where did your day go?</p>
                 </div>
                 <div class="flex items-center gap-3 md:gap-4">
-                    <!-- View Full Day Button -->
-                    <button onclick="viewFullDay()" class="primary-cta hidden md:inline-flex">
+                    <!-- View Full Period Button -->
+                    <button id="viewFullBtn" onclick="viewFullDay()" class="primary-cta hidden md:inline-flex">
                         View Full Day
                     </button>
-                    <!-- Filter Dropdown -->
-                    <div class="dropdown">
-                        <button id="headerFilterBtn" onclick="toggleDropdown()" class="hidden md:flex px-6 py-3 bg-white/90 text-slate-800 rounded-xl font-medium border border-slate-200 hover:bg-slate-50 transition-all duration-200 items-center gap-2">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
-                            </svg>
-                            Filter
-                        </button>
-                        <div id="filterDropdown" class="dropdown-menu">
-                            <div class="dropdown-item" onclick="applyFilter('all', 'All Tasks')">All Tasks</div>
-                            <div class="dropdown-item" onclick="applyFilter('imp', 'Important Work')">Important Work</div>
-                            <div class="dropdown-item" onclick="applyFilter('urg', 'Urgent Work')">Urgent Work</div>
-                            <div class="dropdown-item" onclick="applyFilter('imp_and_urg', 'Important & Urgent')">Important & Urgent</div>
-                            <div class="dropdown-item" onclick="applyFilter('imp_not_urg', 'Important, Not Urgent')">Important, Not Urgent</div>
-                            <div class="dropdown-item" onclick="applyFilter('urg_not_imp', 'Urgent, Not Important')">Urgent, Not Important</div>
-                            <div class="dropdown-item" onclick="applyFilter('not_imp', 'Not Important')">Not Important</div>
-                            <div class="border-t border-gray-200 my-1"></div>
-                            <div class="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">By Category</div>
-                            <div id="tagFilters"></div>
-                        </div>
-                    </div>
                 </div>
             </div>
             <div class="md:hidden flex items-center gap-3 mb-4">
-                <button onclick="viewFullDay()" class="px-5 py-3 rounded-full bg-gray-900 text-amber-300 text-sm font-semibold shadow-lg active:scale-[0.98] transition-transform">
+                <button id="viewFullBtnMobile" onclick="viewFullDay()" class="px-5 py-3 rounded-full bg-gray-900 text-amber-300 text-sm font-semibold shadow-lg active:scale-[0.98] transition-transform">
                     View Full Day
                 </button>
             </div>
@@ -536,40 +515,10 @@
                     </svg>
                     <span class="text-[10px] font-medium">Tags</span>
                 </button>
-                <button id="navFilter" class="flex flex-col items-center gap-1 px-3 py-1 rounded-xl text-gray-600">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.6" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 5h18M6 12h12M10 19h4" />
-                    </svg>
-                    <span class="text-[10px] font-medium">Filter</span>
-                </button>
             </div>
         </div>
     </nav>
 
-    <!-- Mobile Filter Sheet -->
-    <div id="mobileFilterBackdrop" class="fixed inset-0 bg-black/30 backdrop-blur-sm opacity-0 pointer-events-none md:hidden transition-opacity duration-200"></div>
-    <div id="mobileFilterSheet" class="fixed inset-x-0 bottom-0 translate-y-full md:hidden transition-transform duration-300 z-50">
-        <div class="mx-auto max-w-7xl">
-            <div class="bg-[#FEFCF8] border-t border-[rgba(148,126,86,0.25)] rounded-t-2xl shadow-2xl p-4">
-                <div class="flex items-center justify-between mb-3">
-                    <div class="text-sm font-semibold text-gray-700">Filters</div>
-                    <button id="mobileFilterClose" class="px-3 py-1 rounded-full text-xs text-gray-600 border border-slate-200 active:scale-[0.98] transition">
-                        Close
-                    </button>
-                </div>
-                <div class="grid grid-cols-2 gap-2 mb-3">
-                    <button class="px-3 py-2 rounded-xl bg-white border border-slate-200 text-xs text-gray-700 active:scale-[0.98] transition" onclick="applyFilter('all', 'All Tasks')">All Tasks</button>
-                    <button class="px-3 py-2 rounded-xl bg-white border border-slate-200 text-xs text-gray-700 active:scale-[0.98] transition" onclick="applyFilter('imp', 'Important Work')">Important</button>
-                    <button class="px-3 py-2 rounded-xl bg-white border border-slate-200 text-xs text-gray-700 active:scale-[0.98] transition" onclick="applyFilter('urg', 'Urgent Work')">Urgent</button>
-                    <button class="px-3 py-2 rounded-xl bg-white border border-slate-200 text-xs text-gray-700 active:scale-[0.98] transition" onclick="applyFilter('imp_and_urg', 'Important & Urgent')">Important & Urgent</button>
-                    <button class="px-3 py-2 rounded-xl bg-white border border-slate-200 text-xs text-gray-700 active:scale-[0.98] transition" onclick="applyFilter('imp_not_urg', 'Important, Not Urgent')">Important, Not Urgent</button>
-                    <button class="px-3 py-2 rounded-xl bg-white border border-slate-200 text-xs text-gray-700 active:scale-[0.98] transition" onclick="applyFilter('urg_not_imp', 'Urgent, Not Important')">Urgent, Not Important</button>
-                </div>
-                <div class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">By Category</div>
-                <div id="mobileTagFilters" class="grid grid-cols-2 gap-2"></div>
-            </div>
-        </div>
-    </div>
 
     <!-- Modal for Task Details -->
     <div id="taskModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
@@ -608,12 +557,6 @@
             const dropdown = document.getElementById('dateDropdown');
             if (!dropdown) return;
             dropdown.classList.toggle('hidden');
-            const headerFilter = document.getElementById('headerFilterBtn');
-            if (headerFilter) {
-                const isOpen = !dropdown.classList.contains('hidden');
-                headerFilter.classList.toggle('opacity-0', isOpen);
-                headerFilter.classList.toggle('pointer-events-none', isOpen);
-            }
         };
 
         window.navigateMonth = function(offset) {
@@ -667,21 +610,17 @@
             }
         };
 
-        window.toggleDropdown = function() {
-            document.getElementById('filterDropdown').classList.toggle('active');
-        };
-
-        window.closeDropdown = function() {
-            document.getElementById('filterDropdown').classList.remove('active');
-        };
-
         window.viewFullDay = function() {
-            console.log('View Full Day clicked');
-            try {
-                if (typeof closeMobileFilter === 'function') closeMobileFilter();
-            } catch (e) {}
-            window.applyFilter('all', 'Full Day Log');
+            const period = window.currentPeriod || 'day';
+            const periodMap = { 'day': 'Day', 'week': 'Week', 'month': 'Month' };
+            const periodLabel = periodMap[period] || 'Day';
+            console.log('View Full ' + periodLabel + ' clicked');
+            window.applyFilter('all', 'Full ' + periodLabel + ' Log');
         };
+
+        window.toggleDropdown = function() {};
+
+        window.closeDropdown = function() {};
 
         window.viewMatrixQuadrant = function(quadrant, name) {
             console.log('Matrix quadrant clicked:', quadrant, name);
@@ -702,17 +641,36 @@
 
         const TAG_COLOR_MAP = {
             'Work': '#16A34A',
-            'Important': '#22C55E',
             'Necessity': '#A16207',
-            'Urgent': '#DC2626',
+            'Soul': '#7C3AED',
+            'Rest': '#0EA5A4',
             'Waste': '#9F1239'
         };
 
+        const SPECIAL_TAGS = Object.keys(TAG_COLOR_MAP);
+
+        function extractSpecialTags(tag) {
+            if (!tag) return [];
+            return String(tag)
+                .split(',')
+                .map(part => {
+                    let clean = String(part || '').trim();
+                    clean = clean.replace(/[^A-Za-z\s]+$/g, '').replace(/\s+/g, ' ').trim();
+                    if (!clean || /^(undefined|null|none|nan|urg|urgent|imp|important)$/i.test(clean)) return '';
+                    return clean.toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+                })
+                .filter(Boolean)
+                .filter(tagName => SPECIAL_TAGS.includes(tagName));
+        }
+
         function normalizeTagName(tag) {
-            if (!tag) return 'Unlabeled';
-            const trimmed = String(tag).trim();
-            if (!trimmed) return 'Unlabeled';
-            return trimmed.charAt(0).toUpperCase() + trimmed.slice(1).toLowerCase();
+            const tags = extractSpecialTags(tag);
+            return tags[0] || 'Waste';
+        }
+
+        function formatTagNames(tag) {
+            const tags = extractSpecialTags(tag);
+            return tags.length ? tags.join(', ') : 'Waste';
         }
 
         function hoursToHuman(h) {
@@ -846,14 +804,19 @@
                 const badges = [];
                 if (task.important) badges.push('<span class="px-2 py-1 bg-emerald-50 text-emerald-700 text-xs rounded-full">Important</span>');
                 if (task.urgent) badges.push('<span class="px-2 py-1 bg-red-50 text-red-700 text-xs rounded-full">Urgent</span>');
-                let displayTag = task.tag;
-                let tagClass = 'px-2 py-0.5 bg-gray-100 rounded-full text-xs text-gray-700';
-                if (!task.important && !task.urgent && task.tag === 'Waste') {
-                    tagClass = 'px-2 py-0.5 bg-slate-100 rounded-full text-xs text-slate-700';
-                } else if (task.tag === 'Necessity') {
-                    tagClass = 'px-2 py-0.5 bg-amber-50 rounded-full text-xs text-amber-800';
-                } else if (task.tag === 'Work') {
-                    tagClass = 'px-2 py-0.5 bg-emerald-50 rounded-full text-xs text-emerald-700';
+                const displayTag = formatTagNames(task.tag);
+                const primaryTag = normalizeTagName(task.tag);
+                let tagBadge = '';
+                if (displayTag) {
+                    let tagClass = 'px-2 py-0.5 bg-gray-100 rounded-full text-xs text-gray-700';
+                    if (!task.important && !task.urgent && primaryTag === 'Waste') {
+                        tagClass = 'px-2 py-0.5 bg-slate-100 rounded-full text-xs text-slate-700';
+                    } else if (primaryTag === 'Necessity') {
+                        tagClass = 'px-2 py-0.5 bg-amber-50 rounded-full text-xs text-amber-800';
+                    } else if (primaryTag === 'Work') {
+                        tagClass = 'px-2 py-0.5 bg-emerald-50 rounded-full text-xs text-emerald-700';
+                    }
+                    tagBadge = `<span class="${tagClass}">${displayTag}</span>`;
                 }
                 html += `
                     <div class="luxury-card rounded-2xl p-4 md:p-5 mb-3 shadow-lg">
@@ -863,7 +826,7 @@
                                 <div class="flex flex-wrap items-center gap-2 text-[13px] text-gray-600">
                                     <span class="text-gray-500">${task.date}</span>
                                     <span class="text-gray-500">${task.start_time} - ${task.end_time}</span>
-                                    <span class="${tagClass}">${displayTag}</span>
+                                    ${tagBadge}
                                     ${badges.join('')}
                                 </div>
                             </div>
@@ -887,41 +850,120 @@
             document.getElementById('modalTitle').textContent = title;
 
             const totalMinutes = ensureFinite(data.total_minutes || 0);
-            let growthMinutes = 0;
-            let drudgeryMinutes = 0;
-            let wasteMinutes = 0;
+            const periodMinutes = ensureFinite(data.period_minutes || totalMinutes || 0);
+            const taskCount = ensureFinite(data.count || (data.tasks ? data.tasks.length : 0));
+            const totalHours = totalMinutes / 60;
+            const sharePct = periodMinutes ? Math.round((totalMinutes / periodMinutes) * 100) : 0;
+            const avgMinutes = taskCount ? Math.round(totalMinutes / taskCount) : 0;
+            let importantMinutes = 0;
+            let urgentMinutes = 0;
+            const quadrantMinutes = { Critical: 0, Growth: 0, Drudgery: 0, Waste: 0 };
+            const tagTotals = {};
+
             data.tasks.forEach(task => {
                 const dMin = minutesFromHours(task.duration || 0);
-                if (task.important && !task.urgent) {
-                    growthMinutes += dMin;
+                if (task.important) importantMinutes += dMin;
+                if (task.urgent) urgentMinutes += dMin;
+                if (task.urgent && task.important) {
+                    quadrantMinutes.Critical += dMin;
+                } else if (task.important && !task.urgent) {
+                    quadrantMinutes.Growth += dMin;
                 } else if (task.urgent && !task.important) {
-                    drudgeryMinutes += dMin;
-                } else if (!task.urgent && !task.important) {
-                    wasteMinutes += dMin;
+                    quadrantMinutes.Drudgery += dMin;
+                } else {
+                    quadrantMinutes.Waste += dMin;
+                }
+                const tagName = normalizeTagName(task.tag);
+                if (tagName) {
+                    tagTotals[tagName] = (tagTotals[tagName] || 0) + dMin;
                 }
             });
-            const baseMinutes = totalMinutes || (growthMinutes + drudgeryMinutes + wasteMinutes) || 1;
-            const growthPct = Math.round((growthMinutes / baseMinutes) * 100);
-            const drudgeryPct = Math.round((drudgeryMinutes / baseMinutes) * 100);
-            const wastePct = Math.round((wasteMinutes / baseMinutes) * 100);
-            const growthHours = growthMinutes / 60;
-            const drudgeryHours = drudgeryMinutes / 60;
-            const wasteHours = wasteMinutes / 60;
 
-            const statsHtml = `
-                <div class="text-center">
-                    <div class="text-2xl font-light text-gray-900"><span class="js-hover-hours hover-swap" data-hours="${(growthHours || 0)}">${formatHours(growthHours || 0, 1)}h</span></div>
-                    <div class="text-xs text-gray-500 mt-1">${growthPct}% discipline (imp, not urgent)</div>
-                </div>
-                <div class="text-center">
-                    <div class="text-2xl font-light text-gray-900"><span class="js-hover-hours hover-swap" data-hours="${(drudgeryHours || 0)}">${formatHours(drudgeryHours || 0, 1)}h</span></div>
-                    <div class="text-xs text-gray-500 mt-1">${drudgeryPct}% reactive (urg, not important)</div>
-                </div>
-                <div class="text-center">
-                    <div class="text-2xl font-light text-gray-900"><span class="js-hover-hours hover-swap" data-hours="${(wasteHours || 0)}">${formatHours(wasteHours || 0, 1)}h</span></div>
-                    <div class="text-xs text-gray-500 mt-1">${wastePct}% waste (neither)</div>
+            const pct = (num, den) => (den ? Math.round((num / den) * 100) : 0);
+            const topTagEntry = Object.entries(tagTotals).sort((a, b) => b[1] - a[1])[0];
+            const topTagName = topTagEntry ? topTagEntry[0] : '';
+            const topTagPct = topTagEntry ? pct(topTagEntry[1], totalMinutes) : 0;
+            const topQuadrantEntry = Object.entries(quadrantMinutes).sort((a, b) => b[1] - a[1])[0];
+            const topQuadrantName = topQuadrantEntry && topQuadrantEntry[1] ? topQuadrantEntry[0] : '';
+            const topQuadrantPct = topQuadrantName ? pct(topQuadrantEntry[1], totalMinutes) : 0;
+
+            const maxSessionMin = (data.tasks || []).reduce((m, t) => {
+                const d = minutesFromHours(t.duration || 0);
+                return d > m ? d : m;
+            }, 0);
+
+            const periodMatrix = data.period_matrix_minutes || {};
+            const parentShareForQuadrant = (qType) => {
+                if (!qType) return { label: '', pct: 0 };
+                if (qType === 'q2') {
+                    return { label: 'Of Important time', pct: pct(totalMinutes, periodMatrix.important || 0) };
+                }
+                if (qType === 'q4') {
+                    return { label: 'Of Not Urgent time', pct: pct(totalMinutes, periodMatrix.not_urgent || 0) };
+                }
+                if (qType === 'q1' || qType === 'q3') {
+                    return { label: 'Of Urgent time', pct: pct(totalMinutes, periodMatrix.urgent || 0) };
+                }
+                return { label: '', pct: 0 };
+            };
+
+            const statItem = (value, label) => `
+                <div class="rounded-xl border border-slate-100 bg-white/80 px-3 py-3 text-center">
+                    <div class="text-xl md:text-2xl font-light text-gray-900">${value}</div>
+                    <div class="text-[10px] md:text-xs text-gray-500 mt-1 uppercase tracking-wider">${label}</div>
                 </div>
             `;
+
+            const totalValue = `<span class="js-hover-hours hover-swap" data-hours="${totalHours}">${formatHours(totalHours || 0, 1)}h</span>`;
+            const stats = [];
+            const isQuadrant = ['q1', 'q2', 'q3', 'q4'].includes(filterType);
+            const isTag = filterType === 'tag';
+
+            if (filterType === 'all') {
+                const base = totalMinutes || 1;
+                const gMin = quadrantMinutes.Growth || 0;
+                const dMin = quadrantMinutes.Drudgery || 0;
+                const wMin = quadrantMinutes.Waste || 0;
+                const gVal = `<span class="js-hover-hours hover-swap" data-hours="${gMin / 60}">${formatHours(gMin / 60, 1)}h</span>`;
+                const dVal = `<span class="js-hover-hours hover-swap" data-hours="${dMin / 60}">${formatHours(dMin / 60, 1)}h</span>`;
+                const wVal = `<span class="js-hover-hours hover-swap" data-hours="${wMin / 60}">${formatHours(wMin / 60, 1)}h</span>`;
+                stats.push(statItem(gVal, `${pct(gMin, base)}% discipline (imp, not urgent)`));
+                stats.push(statItem(dVal, `${pct(dMin, base)}% reactive (urg, not important)`));
+                stats.push(statItem(wVal, `${pct(wMin, base)}% waste (neither)`));
+            } else if (isTag) {
+                stats.push(statItem(totalValue, `Time in view · ${sharePct}% of period`));
+                stats.push(statItem(`${pct(importantMinutes, totalMinutes)}%`, 'Important share'));
+                stats.push(statItem(`${pct(urgentMinutes, totalMinutes)}%`, 'Urgent share'));
+            } else if (isQuadrant) {
+                stats.push(statItem(totalValue, `Time in view · ${sharePct}% of period`));
+                const parent = parentShareForQuadrant(filterType);
+                stats.push(statItem(`${parent.pct}%`, parent.label || 'Share of parent'));
+                const longestVal = maxSessionMin ? hoursToHuman(maxSessionMin / 60) : '0 min';
+                stats.push(statItem(longestVal, 'Longest session'));
+            } else if (filterType === 'important') {
+                stats.push(statItem(totalValue, `Important · ${sharePct}% of period`));
+                stats.push(statItem(`${pct(quadrantMinutes.Growth, totalMinutes)}%`, 'Growth (not urgent)'));
+                stats.push(statItem(`${pct(quadrantMinutes.Critical, totalMinutes)}%`, 'Critical (urgent)'));
+            } else if (filterType === 'not_important') {
+                stats.push(statItem(totalValue, `Not Important · ${sharePct}% of period`));
+                stats.push(statItem(`${pct(quadrantMinutes.Drudgery, totalMinutes)}%`, 'Drudgery (urgent)'));
+                stats.push(statItem(`${pct(quadrantMinutes.Waste, totalMinutes)}%`, 'Waste (not urgent)'));
+            } else if (filterType === 'urgent') {
+                stats.push(statItem(totalValue, `Urgent · ${sharePct}% of period`));
+                stats.push(statItem(`${pct(quadrantMinutes.Critical, totalMinutes)}%`, 'Critical (important)'));
+                stats.push(statItem(`${pct(quadrantMinutes.Drudgery, totalMinutes)}%`, 'Drudgery (not important)'));
+            } else if (filterType === 'not_urgent') {
+                stats.push(statItem(totalValue, `Not Urgent · ${sharePct}% of period`));
+                stats.push(statItem(`${pct(quadrantMinutes.Growth, totalMinutes)}%`, 'Growth (important)'));
+                stats.push(statItem(`${pct(quadrantMinutes.Waste, totalMinutes)}%`, 'Waste (not important)'));
+            } else {
+                stats.push(statItem(totalValue, `Time in view · ${sharePct}% of period`));
+                const longestVal = maxSessionMin ? hoursToHuman(maxSessionMin / 60) : '0 min';
+                stats.push(statItem(longestVal, 'Longest session'));
+                stats.push(statItem(`${topQuadrantPct}%`, topQuadrantName ? `Dominant · ${topQuadrantName}` : 'Dominant quadrant'));
+            }
+
+            const statsHtml = stats.join('');
             document.getElementById('modalStats').innerHTML = statsHtml;
             window.attachHoverSwap();
             const chartContainer = document.getElementById('modalChart');
@@ -972,47 +1014,41 @@
                 let colors = [];
 
                 if (window.modalFilterType === 'tag') {
-                    const quadrantGroups = {
-                        Growth: 0,
-                        Critical: 0,
-                        Drudgery: 0,
-                        Waste: 0
-                    };
+                    const taskGroups = {};
                     data.tasks.forEach(task => {
-                        const d = task.duration || 0;
-                        if (task.urgent && task.important) {
-                            quadrantGroups.Critical += d;
-                        } else if (task.important && !task.urgent) {
-                            quadrantGroups.Growth += d;
-                        } else if (task.urgent && !task.important) {
-                            quadrantGroups.Drudgery += d;
-                        } else {
-                            quadrantGroups.Waste += d;
-                        }
+                        let key = String(task.task || '').trim();
+                        if (!key || /^(undefined|null|none|nan)$/i.test(key)) key = 'Unspecified';
+                        taskGroups[key] = (taskGroups[key] || 0) + (task.duration || 0);
                     });
-                    labels = ['Growth', 'Critical', 'Drudgery', 'Waste'];
-                    values = labels.map(label => quadrantGroups[label]);
-                    const quadrantColors = {
-                        Growth: '#16A34A',
-                        Critical: '#F97316',
-                        Drudgery: '#6B7280',
-                        Waste: '#9F1239'
-                    };
-                    colors = labels.map(label => quadrantColors[label]);
+                    const entries = Object.entries(taskGroups).sort((a, b) => b[1] - a[1]);
+                    const top = entries.slice(0, 6);
+                    const rest = entries.slice(6);
+                    labels = top.map(e => e[0]);
+                    values = top.map(e => e[1]);
+                    if (rest.length) {
+                        labels.push('Other');
+                        values.push(rest.reduce((s, e) => s + e[1], 0));
+                    }
+                    const palette = ['#111827', '#16A34A', '#A16207', '#7C3AED', '#0EA5A4', '#9F1239', '#9CA3AF', '#F59E0B'];
+                    colors = labels.map((label, idx) => palette[idx % palette.length]);
                 } else {
                     const tagGroups = {};
                     data.tasks.forEach(task => {
-                        const key = normalizeTagName(task.tag);
-                        if (!tagGroups[key]) {
-                            tagGroups[key] = 0;
-                        }
-                        tagGroups[key] += task.duration;
+                        const key = normalizeTagName(task.tag) || 'Waste';
+                        tagGroups[key] = (tagGroups[key] || 0) + (task.duration || 0);
                     });
                     labels = Object.keys(tagGroups);
                     values = Object.values(tagGroups);
-                    const palette = ['#111827', '#16A34A', '#F59E0B', '#E11D48', '#64748B', '#0369A1', '#7C3AED', '#F97316'];
+                    const palette = ['#111827', '#16A34A', '#A16207', '#7C3AED', '#0EA5A4', '#9F1239', '#9CA3AF', '#F59E0B'];
                     colors = labels.map((label, idx) => TAG_COLOR_MAP[label] || palette[idx % palette.length]);
                 }
+
+                const modalFallbackLabel = window.modalFilterType === 'tag' ? 'Unspecified' : 'Waste';
+                labels = labels.map(l => {
+                    const s = String(l ?? '').trim();
+                    if (!s || /^(undefined|null|none|nan)$/i.test(s)) return modalFallbackLabel;
+                    return s;
+                });
                 const chart = new Chart(ctx, {
                     type: 'pie',
                     data: {
@@ -1028,6 +1064,31 @@
                         plugins: {
                             legend: {
                                 position: 'bottom',
+                                labels: {
+                                    generateLabels: function(chart) {
+                                        const labels = chart.data.labels || [];
+                                        const data = chart.data.datasets[0]?.data || [];
+                                        const meta = chart.getDatasetMeta(0);
+                                        return labels.map((rawLabel, idx) => {
+                                            const style = meta?.controller?.getStyle
+                                                ? meta.controller.getStyle(idx)
+                                                : {};
+                                            const baseText = String(rawLabel ?? '').trim();
+                                            const safeText = baseText && !/^(undefined|null|none|nan)$/i.test(baseText)
+                                                ? baseText
+                                                : (window.modalFilterType === 'tag' ? 'Unspecified' : 'Waste');
+                                            return {
+                                                text: safeText,
+                                                fillStyle: style.backgroundColor,
+                                                strokeStyle: style.borderColor,
+                                                lineWidth: style.borderWidth,
+                                                hidden: !chart.getDataVisibility(idx),
+                                                index: idx,
+                                                datasetIndex: 0
+                                            };
+                                        });
+                                    }
+                                },
                                 onClick: function(e, legendItem, legend) {
                                     const ci = legend.chart;
                                     const index = legendItem.index;
@@ -1042,6 +1103,23 @@
                                         delete window.hiddenTags[label];
                                     }
                                     window.renderModalTasks();
+                                }
+                            },
+                            tooltip: {
+                                backgroundColor: 'rgba(31, 41, 55, 0.95)',
+                                padding: 12,
+                                titleFont: { family: 'Inter', size: 12, weight: '500' },
+                                bodyFont: { family: 'Inter', size: 11 },
+                                cornerRadius: 8,
+                                callbacks: {
+                                    label: function(context) {
+                                        const raw = context.label;
+                                        const label = String(raw ?? '').trim() || (window.modalFilterType === 'tag' ? 'Unspecified' : 'Waste');
+                                        const value = Number(context.parsed || 0);
+                                        const total = context.dataset.data.reduce((a, b) => a + (Number(b) || 0), 0);
+                                        const percent = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                                        return `${label}: ${value.toFixed(1)}h (${percent}%)`;
+                                    }
                                 }
                             }
                         },
@@ -1176,117 +1254,103 @@
                 }
             });
 
-            // Load tag filters
-            const tagUrl = `/api/tags?date=${window.currentDate}&period=${window.currentPeriod}`;
-            if (!navigator.onLine) {
-                setGlobalLoading(false, 'You are offline. Filters may be limited.');
-            }
-            fetch(tagUrl)
-            .then(r => {
-                if (!r.ok) throw new Error(`HTTP ${r.status}`);
-                return r.json();
-            })
-            .then(data => {
-                const container = document.getElementById('tagFilters');
-                const mobileContainer = document.getElementById('mobileTagFilters');
-                const appendTag = (target, tag) => {
-                    const item = document.createElement(target === mobileContainer ? 'button' : 'div');
-                    item.className = target === mobileContainer
-                        ? 'px-3 py-2 rounded-xl bg-white border border-slate-200 text-xs text-gray-700 active:scale-[0.98] transition'
-                        : 'dropdown-item';
-                    item.textContent = `${tag.name} (${tag.hours}h)`;
-                    item.onclick = () => window.applyFilter('tag', tag.name, tag.name);
-                    target.appendChild(item);
-                };
-                if (data.tags && data.tags.length > 0) {
-                    data.tags.forEach(tag => {
-                        if (container) appendTag(container, tag);
-                        if (mobileContainer) appendTag(mobileContainer, tag);
-                    });
-                }
-            })
-            .catch(err => {
-                console.error('Tag fetch failed:', err);
-                setGlobalLoading(false, 'Failed to load tags');
-            });
+            // Update button text based on period
+            const period = window.currentPeriod || 'day';
+            const periodMap = { 'day': 'Day', 'week': 'Week', 'month': 'Month' };
+            const periodLabel = periodMap[period] || 'Day';
+            const viewFullBtn = document.getElementById('viewFullBtn');
+            const viewFullBtnMobile = document.getElementById('viewFullBtnMobile');
+            if (viewFullBtn) viewFullBtn.textContent = 'View Full ' + periodLabel;
+            if (viewFullBtnMobile) viewFullBtnMobile.textContent = 'View Full ' + periodLabel;
 
             window.dateCursor = new Date(window.currentDate);
             window.renderDateGrid();
 
-            {% if tags.labels %}
             const tagCanvas = document.getElementById('tagChart');
             const tagCtx = tagCanvas ? tagCanvas.getContext('2d') : null;
             const isMobile = window.matchMedia('(max-width: 767px)').matches;
             const tagPalette = ['#111827', '#16A34A', '#F59E0B', '#E11D48', '#64748B', '#0369A1', '#7C3AED', '#F97316'];
-            const tagLabels = {{ tags.labels | safe }};
-            const tagColors = tagLabels.map((label, idx) => TAG_COLOR_MAP[label] || tagPalette[idx % tagPalette.length]);
-            try {
-                const tagChart = new Chart(tagCtx, {
-                    type: 'doughnut',
-                    data: {
-                        labels: tagLabels,
-                        datasets: [{
-                            data: {{ tags.data | safe }},
-                            backgroundColor: tagColors,
-                            borderWidth: 0,
-                            hoverOffset: 8
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        cutout: isMobile ? '80%' : '75%',
-                        plugins: {
-                            legend: {
-                                display: !isMobile,
-                                position: 'bottom',
-                                maxWidth: 280,
-                                labels: {
-                                    usePointStyle: true,
-                                    font: { family: 'Inter', size: 10, weight: '400' },
-                                    padding: 10,
-                                    color: '#6B7280',
-                                    boxWidth: 8
+            const tagLabels = JSON.parse('{{ (tags.labels or []) | tojson }}');
+            const tagData = JSON.parse('{{ (tags.data or []) | tojson }}');
+            if (tagCtx && tagLabels.length) {
+                const tagColors = tagLabels.map((label, idx) => TAG_COLOR_MAP[label] || tagPalette[idx % tagPalette.length]);
+                try {
+                    const tagChart = new Chart(tagCtx, {
+                        type: 'doughnut',
+                        data: {
+                            labels: tagLabels,
+                            datasets: [{
+                                data: tagData,
+                                backgroundColor: tagColors,
+                                borderWidth: 0,
+                                hoverOffset: 8
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            cutout: isMobile ? '80%' : '75%',
+                            plugins: {
+                                legend: {
+                                    display: !isMobile,
+                                    position: 'bottom',
+                                    maxWidth: 280,
+                                    labels: {
+                                        usePointStyle: true,
+                                        font: { family: 'Inter', size: 10, weight: '400' },
+                                        padding: 10,
+                                        color: '#6B7280',
+                                        boxWidth: 8
+                                    }
+                                },
+                                tooltip: {
+                                    backgroundColor: 'rgba(31, 41, 55, 0.95)',
+                                    padding: 12,
+                                    titleFont: { family: 'Inter', size: 12, weight: '500' },
+                                    bodyFont: { family: 'Inter', size: 11 },
+                                    cornerRadius: 8,
+                                    callbacks: {
+                                        label: function(context) {
+                                            const label = context.label || '';
+                                            const value = context.parsed || 0;
+                                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                            const percent = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                                            return label + ': ' + value.toFixed(1) + 'h (' + percent + '%)';
+                                        }
+                                    }
                                 }
-                            },
-                            tooltip: {
-                                backgroundColor: 'rgba(31, 41, 55, 0.95)',
-                                padding: 12,
-                                titleFont: { family: 'Inter', size: 12, weight: '500' },
-                                bodyFont: { family: 'Inter', size: 11 },
-                                cornerRadius: 8
                             }
                         }
-                    }
-                });
-                tagChart.options.onClick = function(evt, elements) {
-                    if (!elements || !elements.length) return;
-                    const index = elements[0].index;
-                    const label = tagChart.data.labels[index];
-                    window.applyFilter('tag', label, label);
-                };
-                tagChart.update();
-                const mobileLegend = document.getElementById('mobileTagLegend');
-                if (isMobile && mobileLegend) {
-                    tagChart.options.plugins.legend.display = false;
+                    });
+                    tagChart.options.onClick = function(evt, elements) {
+                        if (!elements || !elements.length) return;
+                        const index = elements[0].index;
+                        const label = tagChart.data.labels[index];
+                        window.applyFilter('tag', label, label);
+                    };
                     tagChart.update();
-                    mobileLegend.innerHTML = tagLabels.map((label, idx) => (
-                        `<span class="inline-flex items-center gap-1">
-                            <span class="inline-block w-2.5 h-2.5 rounded-full" style="background:${tagColors[idx]}"></span>
-                            ${label}
-                        </span>`
-                    )).join('');
-                }
-            } catch (e) {
-                const wrap = document.getElementById('tags');
-                if (wrap) {
-                    const holder = wrap.querySelector('[aria-label=\"Time spent by tag category\"]');
-                    if (holder) {
-                        holder.innerHTML = '<div class=\"text-center text-xs text-gray-400\">Unable to render chart</div>';
+                    const mobileLegend = document.getElementById('mobileTagLegend');
+                    if (isMobile && mobileLegend) {
+                        tagChart.options.plugins.legend.display = false;
+                        tagChart.update();
+                        mobileLegend.innerHTML = tagLabels.map((label, idx) => {
+                            return `<span class="inline-flex items-center gap-1">
+                                <span class="inline-block w-2.5 h-2.5 rounded-full" style="background:${tagColors[idx]}"></span>
+                                ${label}
+                            </span>`;
+                        }).join('');
+                    }
+                } catch (e) {
+                    const wrap = document.getElementById('tags');
+                    if (wrap) {
+                        const holder = wrap.querySelector('[aria-label="Time spent by tag category"]');
+                        if (holder) {
+                            holder.innerHTML = '<div class="text-center text-xs text-gray-400">Unable to render chart</div>';
+                        }
                     }
                 }
             }
-            {% endif %}
+
             // Decimal handling helpers: sum in minutes to avoid float drift, format using fixed decimals
             function ensureFinite(n) {
                 const v = Number(n);
