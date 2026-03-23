@@ -148,6 +148,55 @@
             box-shadow: 0 20px 40px rgba(17, 24, 39, 0.7);
             filter: brightness(1.03);
         }
+        .water-fill {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(180deg, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0.1) 100%);
+            transition: height 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+            overflow: hidden;
+            --tilt-x: 0%;
+            --tilt-rotate: 0deg;
+        }
+        .water-fill::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(ellipse at center, rgba(255,255,255,0.4) 0%, transparent 70%);
+            animation: wave 8s ease-in-out infinite;
+            transform: translate(var(--tilt-x), 0) rotate(var(--tilt-rotate));
+            transition: transform 0.3s ease-out;
+        }
+        .water-fill::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(ellipse at center, rgba(255,255,255,0.3) 0%, transparent 70%);
+            animation: wave 10s ease-in-out infinite reverse;
+            transform: translate(calc(var(--tilt-x) * -1), 0) rotate(calc(var(--tilt-rotate) * -1));
+            transition: transform 0.3s ease-out;
+        }
+        @keyframes wave {
+            0%, 100% {
+                transform: translate(var(--tilt-x, 0%), 0) rotate(var(--tilt-rotate, 0deg));
+            }
+            25% {
+                transform: translate(calc(5% + var(--tilt-x, 0%)), -5%) rotate(calc(1deg + var(--tilt-rotate, 0deg)));
+            }
+            50% {
+                transform: translate(calc(-5% + var(--tilt-x, 0%)), -10%) rotate(calc(-1deg + var(--tilt-rotate, 0deg)));
+            }
+            75% {
+                transform: translate(calc(-5% + var(--tilt-x, 0%)), -5%) rotate(calc(0.5deg + var(--tilt-rotate, 0deg)));
+            }
+        }
         .primary-cta:active {
             transform: translateY(0);
             box-shadow: 0 10px 22px rgba(17, 24, 39, 0.5);
@@ -346,11 +395,11 @@
                     <p class="text-sm text-gray-500">Extended Eisenhower Matrix analysis</p>
                 </div>
                 <div class="grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-4">
-                    <!-- Row 1: Important & Urgent | Important & !Urgent | Important -->
+                    <!-- Core 2x2 Quadrants (Mobile: Row 1-2, Desktop: Row 1-2 Col 1-2) -->
                     
                     <!-- Critical: Important & Urgent - Yellow/Amber (matters but stressful) -->
                     <div class="matrix-card luxury-card rounded-xl md:rounded-2xl p-3 md:p-5 bg-gradient-to-br from-amber-50/80 to-yellow-50/40 border-amber-200/60 hover:shadow-lg transition-all duration-300 relative overflow-hidden" onclick="viewMatrixQuadrant('q1', 'Critical')">
-                        <div class="absolute bottom-0 left-0 h-1.5 bg-amber-400/40 transition-all duration-500" style="width: {{ matrix.q1.pct }}%"></div>
+                        <div class="water-fill" style="height: {{ matrix.q1.pct }}%; background: linear-gradient(180deg, rgba(251, 191, 36, 0.45) 0%, rgba(245, 158, 11, 0.35) 100%);"></div>
                         <div class="relative z-10">
                             <div class="flex justify-between items-start mb-2 md:mb-4">
                                 <div>
@@ -365,8 +414,8 @@
                     </div>
 
                     <!-- Growth: Important & !Urgent - Soft Green/Mint (best time, calm growth, self-control) -->
-                    <div class="matrix-card luxury-card rounded-xl md:rounded-2xl p-3 md:p-5 bg-gradient-to-br from-green-100/70 to-emerald-50/50 border-green-200/60 hover:shadow-lg transition-all duration-300 relative overflow-hidden" onclick="viewMatrixQuadrant('q2', 'Growth')">
-                        <div class="absolute bottom-0 left-0 h-1.5 bg-green-400/40 transition-all duration-500" style="width: {{ matrix.q2.pct }}%"></div>
+                    <div class="matrix-card luxury-card rounded-xl md:rounded-2xl p-3 md:p-5 bg-gradient-to-br from-green-100/70 to-emerald-50/50 border-green-200/60 hover:shadow-lg transition-all duration-300 relative overflow-hidden md:order-none" onclick="viewMatrixQuadrant('q2', 'Growth')">
+                        <div class="water-fill" style="height: {{ matrix.q2.pct }}%; background: linear-gradient(180deg, rgba(52, 211, 153, 0.45) 0%, rgba(16, 185, 129, 0.35) 100%);"></div>
                         <div class="relative z-10">
                             <div class="flex justify-between items-start mb-2 md:mb-4">
                                 <div>
@@ -380,27 +429,9 @@
                         </div>
                     </div>
 
-                    <!-- Important (All) - Blue (neutral, trustworthy aggregate) -->
-                    <div class="matrix-card luxury-card rounded-xl md:rounded-2xl p-3 md:p-5 bg-gradient-to-br from-blue-50/70 to-indigo-50/40 border-blue-200/60 hover:shadow-lg transition-all duration-300 relative overflow-hidden" onclick="viewMatrixQuadrant('important', 'Important')">
-                        <div class="absolute bottom-0 left-0 h-1.5 bg-blue-400/40 transition-all duration-500" style="width: {{ matrix.important.pct }}%"></div>
-                        <div class="relative z-10">
-                            <div class="flex justify-between items-start mb-2 md:mb-4">
-                                <div>
-                                    <h4 class="text-blue-800 font-semibold text-sm md:text-base mb-0.5">Important</h4>
-                                    <p class="text-[8px] md:text-[10px] text-blue-700/80 font-medium uppercase tracking-wider">All Important</p>
-                                </div>
-                                <div class="text-lg md:text-xl text-blue-400/70">●</div>
-                            </div>
-                            <div class="text-2xl md:text-3xl font-light text-gray-900 mb-1"><span class="js-hover-hours" data-hours="{{ matrix.important.hours }}">{{ matrix.important.hours }}h</span></div>
-                            <div class="text-[10px] md:text-xs font-medium text-blue-700/70">{{ matrix.important.pct }}%</div>
-                        </div>
-                    </div>
-
-                    <!-- Row 2: Urgent & !Important | !Important & !Urgent | !Important -->
-                    
                     <!-- Drudgery: Urgent & !Important - Grey/Dull Steel (lifeless obligation) -->
-                    <div class="matrix-card luxury-card rounded-xl md:rounded-2xl p-3 md:p-5 bg-gradient-to-br from-slate-200/70 to-zinc-100/50 border-slate-300/60 hover:shadow-lg transition-all duration-300 relative overflow-hidden" onclick="viewMatrixQuadrant('q3', 'Drudgery')">
-                        <div class="absolute bottom-0 left-0 h-1.5 bg-slate-400/40 transition-all duration-500" style="width: {{ matrix.q3.pct }}%"></div>
+                    <div class="matrix-card luxury-card rounded-xl md:rounded-2xl p-3 md:p-5 bg-gradient-to-br from-slate-200/70 to-zinc-100/50 border-slate-300/60 hover:shadow-lg transition-all duration-300 relative overflow-hidden md:order-none" onclick="viewMatrixQuadrant('q3', 'Drudgery')">
+                        <div class="water-fill" style="height: {{ matrix.q3.pct }}%; background: linear-gradient(180deg, rgba(148, 163, 184, 0.45) 0%, rgba(100, 116, 139, 0.35) 100%);"></div>
                         <div class="relative z-10">
                             <div class="flex justify-between items-start mb-2 md:mb-4">
                                 <div>
@@ -415,8 +446,8 @@
                     </div>
 
                     <!-- Waste: !Important & !Urgent - Muted/Desaturated Red (time decay, subtle warning) -->
-                    <div class="matrix-card luxury-card rounded-xl md:rounded-2xl p-3 md:p-5 bg-gradient-to-br from-red-100/60 to-rose-50/40 border-red-200/50 hover:shadow-lg transition-all duration-300 relative overflow-hidden" onclick="viewMatrixQuadrant('q4', 'Waste')">
-                        <div class="absolute bottom-0 left-0 h-1.5 bg-red-400/40 transition-all duration-500" style="width: {{ matrix.q4.pct }}%"></div>
+                    <div class="matrix-card luxury-card rounded-xl md:rounded-2xl p-3 md:p-5 bg-gradient-to-br from-red-100/60 to-rose-50/40 border-red-200/50 hover:shadow-lg transition-all duration-300 relative overflow-hidden md:order-none" onclick="viewMatrixQuadrant('q4', 'Waste')">
+                        <div class="water-fill" style="height: {{ matrix.q4.pct }}%; background: linear-gradient(180deg, rgba(248, 113, 113, 0.45) 0%, rgba(239, 68, 68, 0.35) 100%);"></div>
                         <div class="relative z-10">
                             <div class="flex justify-between items-start mb-2 md:mb-4">
                                 <div>
@@ -430,9 +461,27 @@
                         </div>
                     </div>
 
+                    <!-- Aggregate Boxes (Mobile: Row 3-4, Desktop: Row 1-3 Col 3) -->
+                    
+                    <!-- Important (All) - Blue (neutral, trustworthy aggregate) -->
+                    <div class="matrix-card luxury-card rounded-xl md:rounded-2xl p-3 md:p-5 bg-gradient-to-br from-blue-50/70 to-indigo-50/40 border-blue-200/60 hover:shadow-lg transition-all duration-300 relative overflow-hidden md:order-none" onclick="viewMatrixQuadrant('important', 'Important')">
+                        <div class="water-fill" style="height: {{ matrix.important.pct }}%; background: linear-gradient(180deg, rgba(96, 165, 250, 0.45) 0%, rgba(59, 130, 246, 0.35) 100%);"></div>
+                        <div class="relative z-10">
+                            <div class="flex justify-between items-start mb-2 md:mb-4">
+                                <div>
+                                    <h4 class="text-blue-800 font-semibold text-sm md:text-base mb-0.5">Important</h4>
+                                    <p class="text-[8px] md:text-[10px] text-blue-700/80 font-medium uppercase tracking-wider">All Important</p>
+                                </div>
+                                <div class="text-lg md:text-xl text-blue-400/70">●</div>
+                            </div>
+                            <div class="text-2xl md:text-3xl font-light text-gray-900 mb-1"><span class="js-hover-hours" data-hours="{{ matrix.important.hours }}">{{ matrix.important.hours }}h</span></div>
+                            <div class="text-[10px] md:text-xs font-medium text-blue-700/70">{{ matrix.important.pct }}%</div>
+                        </div>
+                    </div>
+
                     <!-- Not Important (All) - Very Light Neutral (quiet, low-value total) -->
-                    <div class="matrix-card luxury-card rounded-xl md:rounded-2xl p-3 md:p-5 bg-gradient-to-br from-neutral-100/50 to-stone-50/30 border-neutral-200/50 hover:shadow-lg transition-all duration-300 relative overflow-hidden" onclick="viewMatrixQuadrant('not_important', 'Not Important')">
-                        <div class="absolute bottom-0 left-0 h-1.5 bg-neutral-400/40 transition-all duration-500" style="width: {{ matrix.not_important.pct }}%"></div>
+                    <div class="matrix-card luxury-card rounded-xl md:rounded-2xl p-3 md:p-5 bg-gradient-to-br from-neutral-100/50 to-stone-50/30 border-neutral-200/50 hover:shadow-lg transition-all duration-300 relative overflow-hidden md:order-none" onclick="viewMatrixQuadrant('not_important', 'Not Important')">
+                        <div class="water-fill" style="height: {{ matrix.not_important.pct }}%; background: linear-gradient(180deg, rgba(163, 163, 163, 0.45) 0%, rgba(115, 115, 115, 0.35) 100%);"></div>
                         <div class="relative z-10">
                             <div class="flex justify-between items-start mb-2 md:mb-4">
                                 <div>
@@ -446,11 +495,9 @@
                         </div>
                     </div>
 
-                    <!-- Row 3: Urgent | !Urgent | (empty) -->
-                    
                     <!-- Urgent (All) - Orange/Amber (pressure, energy drain) -->
-                    <div class="matrix-card luxury-card rounded-xl md:rounded-2xl p-3 md:p-5 bg-gradient-to-br from-orange-100/70 to-amber-50/40 border-orange-200/60 hover:shadow-lg transition-all duration-300 relative overflow-hidden" onclick="viewMatrixQuadrant('urgent', 'Urgent')">
-                        <div class="absolute bottom-0 left-0 h-1.5 bg-orange-400/40 transition-all duration-500" style="width: {{ matrix.urgent.pct }}%"></div>
+                    <div class="matrix-card luxury-card rounded-xl md:rounded-2xl p-3 md:p-5 bg-gradient-to-br from-orange-100/70 to-amber-50/40 border-orange-200/60 hover:shadow-lg transition-all duration-300 relative overflow-hidden md:order-none" onclick="viewMatrixQuadrant('urgent', 'Urgent')">
+                        <div class="water-fill" style="height: {{ matrix.urgent.pct }}%; background: linear-gradient(180deg, rgba(251, 146, 60, 0.45) 0%, rgba(249, 115, 22, 0.35) 100%);"></div>
                         <div class="relative z-10">
                             <div class="flex justify-between items-start mb-2 md:mb-4">
                                 <div>
@@ -465,8 +512,8 @@
                     </div>
 
                     <!-- Not Urgent (All) - Soft Teal/Green (calm, time freedom) -->
-                    <div class="matrix-card luxury-card rounded-xl md:rounded-2xl p-3 md:p-5 bg-gradient-to-br from-teal-50/70 to-green-50/40 border-teal-200/60 hover:shadow-lg transition-all duration-300 relative overflow-hidden" onclick="viewMatrixQuadrant('not_urgent', 'Not Urgent')">
-                        <div class="absolute bottom-0 left-0 h-1.5 bg-teal-400/40 transition-all duration-500" style="width: {{ matrix.not_urgent.pct }}%"></div>
+                    <div class="matrix-card luxury-card rounded-xl md:rounded-2xl p-3 md:p-5 bg-gradient-to-br from-teal-50/70 to-green-50/40 border-teal-200/60 hover:shadow-lg transition-all duration-300 relative overflow-hidden md:order-none" onclick="viewMatrixQuadrant('not_urgent', 'Not Urgent')">
+                        <div class="water-fill" style="height: {{ matrix.not_urgent.pct }}%; background: linear-gradient(180deg, rgba(45, 212, 191, 0.45) 0%, rgba(20, 184, 166, 0.35) 100%);"></div>
                         <div class="relative z-10">
                             <div class="flex justify-between items-start mb-2 md:mb-4">
                                 <div>
@@ -482,7 +529,7 @@
 
                     <!-- Total - Neutral Grey/Beige (pure fact, no emotion) -->
                     <div class="matrix-card luxury-card rounded-xl md:rounded-2xl p-3 md:p-5 bg-gradient-to-br from-stone-100/50 to-neutral-50/30 border-stone-200/40 hover:shadow-lg transition-all duration-300 relative overflow-hidden col-span-2 md:col-span-1">
-                        <div class="absolute bottom-0 left-0 h-1.5 bg-stone-300/40 transition-all duration-500" style="width: 100%"></div>
+                        <div class="water-fill" style="height: 100%; background: linear-gradient(180deg, rgba(168, 162, 158, 0.45) 0%, rgba(120, 113, 108, 0.35) 100%);"></div>
                         <div class="relative z-10">
                             <div class="flex justify-between items-start mb-2 md:mb-4">
                                 <div>
@@ -842,15 +889,9 @@
                 const primaryTag = normalizeTagName(task.tag);
                 let tagBadge = '';
                 if (displayTag) {
-                    let tagClass = 'px-2 py-0.5 bg-gray-100 rounded-full text-xs text-gray-700';
-                    if (!task.important && !task.urgent && primaryTag === 'Waste') {
-                        tagClass = 'px-2 py-0.5 bg-slate-100 rounded-full text-xs text-slate-700';
-                    } else if (primaryTag === 'Necessity') {
-                        tagClass = 'px-2 py-0.5 bg-amber-50 rounded-full text-xs text-amber-800';
-                    } else if (primaryTag === 'Work') {
-                        tagClass = 'px-2 py-0.5 bg-emerald-50 rounded-full text-xs text-emerald-700';
-                    }
-                    tagBadge = `<span class="${tagClass}">${displayTag}</span>`;
+                    const tagColor = TAG_COLOR_MAP[primaryTag] || '#6B7280';
+                    const tagStyle = `background-color: ${tagColor}15; color: ${tagColor}; border: 1px solid ${tagColor}30;`;
+                    tagBadge = `<span class="px-2 py-0.5 rounded-full text-xs font-medium" style="${tagStyle}">${displayTag}</span>`;
                 }
                 html += `
                     <div class="luxury-card rounded-2xl p-4 md:p-5 mb-3 shadow-lg">
@@ -1476,6 +1517,25 @@
                 });
             }
             attachHoverSwap();
+
+            // Tilt-responsive water animation for mobile devices
+            if (window.DeviceOrientationEvent) {
+                window.addEventListener('deviceorientation', function(event) {
+                    const gamma = event.gamma; // Left-right tilt (-90 to 90)
+                    if (gamma !== null) {
+                        const waterElements = document.querySelectorAll('.water-fill');
+                        waterElements.forEach(function(water) {
+                            // Normalize gamma to -1 to 1 range (clamp to -30 to 30 degrees)
+                            const clampedGamma = Math.max(-30, Math.min(30, gamma));
+                            const tiltFactor = clampedGamma / 30;
+                            
+                            // Apply transform to water pseudo-elements via CSS custom property
+                            water.style.setProperty('--tilt-x', (tiltFactor * 10) + '%');
+                            water.style.setProperty('--tilt-rotate', (tiltFactor * 2) + 'deg');
+                        });
+                    }
+                });
+            }
         }); // End DOMContentLoaded
     </script>
 </body>
