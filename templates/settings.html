@@ -31,10 +31,10 @@
                 </div>
                 <div class="flex items-center gap-3">
                     {% if is_admin %}
-                        <a href="{{ url_for('admin_users') }}" class="px-4 py-2 rounded-full bg-white/80 border border-[rgba(148,126,86,0.35)] text-sm text-gray-700 hover:bg-[#F7F1E6] transition-all">Admin</a>
+                        <a href="{{ url_for('admin.admin_users') }}" class="px-4 py-2 rounded-full bg-white/80 border border-[rgba(148,126,86,0.35)] text-sm text-gray-700 hover:bg-[#F7F1E6] transition-all">Admin</a>
                     {% endif %}
-                    <a href="{{ url_for('dashboard') }}" class="px-4 py-2 rounded-full bg-white/80 border border-[rgba(148,126,86,0.35)] text-sm text-gray-700 hover:bg-[#F7F1E6] transition-all">Back</a>
-                    <a href="{{ url_for('logout') }}" class="px-4 py-2 rounded-full bg-gray-900 text-amber-300 text-sm font-semibold shadow-lg">Logout</a>
+                    <a href="{{ url_for('main.dashboard') }}" class="px-4 py-2 rounded-full bg-white/80 border border-[rgba(148,126,86,0.35)] text-sm text-gray-700 hover:bg-[#F7F1E6] transition-all">Back</a>
+                    <a href="{{ url_for('auth.logout') }}" class="px-4 py-2 rounded-full bg-gray-900 text-amber-300 text-sm font-semibold shadow-lg">Logout</a>
                 </div>
             </div>
         </div>

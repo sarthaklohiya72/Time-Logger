@@ -1,5 +1,5 @@
 import unittest
-from app import human_hours
+from time_tracker_pro.core.time_utils import human_hours
 
 class DecimalHandlingTests(unittest.TestCase):
     def test_human_hours_simple(self):

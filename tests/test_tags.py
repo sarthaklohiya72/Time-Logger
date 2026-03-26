@@ -1,5 +1,5 @@
 import unittest
-from app import normalize_tag
+from time_tracker_pro.core.tags import normalize_tag
 
 class TagNormalizationTests(unittest.TestCase):
     def test_trailing_punctuation_removed(self):

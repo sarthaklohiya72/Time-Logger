@@ -23,24 +23,24 @@
 </head>
 <body class="antialiased overflow-x-hidden">
     <header class="bg-white/90 backdrop-blur border-b border-slate-200 shadow-sm" role="banner">
-        <div class="max-w-6xl mx-auto px-6 py-6">
-            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div class="max-w-6xl mx-auto px-4 md:px-6 py-4 md:py-6">
+            <div class="flex flex-col gap-3 md:gap-4">
                 <div>
-                    <h1 class="text-2xl font-semibold text-gray-900 tracking-tight">Admin Console</h1>
-                    <p class="text-sm text-gray-500 mt-1">Manage users and access</p>
+                    <h1 class="text-xl md:text-2xl font-semibold text-gray-900 tracking-tight">Admin Console</h1>
+                    <p class="text-xs md:text-sm text-gray-500 mt-0.5 md:mt-1">Manage users and access</p>
                 </div>
-                <div class="flex items-center gap-3">
-                    <div class="px-3 py-2 rounded-full bg-white/80 border border-[rgba(148,126,86,0.35)] text-xs font-semibold text-gray-800">
+                <div class="flex flex-wrap items-center gap-2 md:gap-3">
+                    <div class="px-3 py-1.5 md:py-2 rounded-full bg-white/80 border border-[rgba(148,126,86,0.35)] text-xs font-semibold text-gray-800">
                         {{ current_user.display_name }}
                     </div>
-                    <a href="{{ url_for('dashboard') }}" class="px-4 py-2 rounded-full bg-white/80 border border-[rgba(148,126,86,0.35)] text-sm text-gray-700 hover:bg-[#F7F1E6] transition-all">Dashboard</a>
-                    <a href="{{ url_for('logout') }}" class="px-4 py-2 rounded-full bg-gray-900 text-amber-300 text-sm font-semibold shadow-lg">Logout</a>
+                    <a href="{{ url_for('main.dashboard') }}" class="px-3 md:px-4 py-1.5 md:py-2 rounded-full bg-white/80 border border-[rgba(148,126,86,0.35)] text-xs md:text-sm text-gray-700 hover:bg-[#F7F1E6] transition-all">Dashboard</a>
+                    <a href="{{ url_for('auth.logout') }}" class="px-3 md:px-4 py-1.5 md:py-2 rounded-full bg-gray-900 text-amber-300 text-xs md:text-sm font-semibold shadow-lg">Logout</a>
                 </div>
             </div>
         </div>
     </header>
 
-    <main class="max-w-6xl mx-auto px-6 py-10 space-y-8">
+    <main class="max-w-6xl mx-auto px-4 md:px-6 py-6 md:py-10 space-y-6 md:space-y-8">
         {% if error %}
             <div class="px-4 py-3 rounded-2xl bg-red-50 border border-red-200 text-sm text-red-700">
                 {{ error }}
@@ -56,7 +56,30 @@
             <h2 class="text-xl font-semibold text-gray-900">All Users</h2>
             <p class="text-sm text-gray-600 mt-1">Name, user ID, email, and verification status.</p>
 
-            <div class="mt-6 overflow-x-auto">
+            <div class="mt-6 space-y-4 md:hidden">
+                {% for user in users %}
+                    <div class="rounded-2xl border border-[rgba(148,126,86,0.25)] bg-white/80 px-4 py-4 shadow-sm">
+                        <div class="flex items-center justify-between gap-2">
+                            <div class="text-sm font-semibold text-gray-900">
+                                {{ user.name or user.user_id or user.email }}
+                            </div>
+                            <span class="px-3 py-1 rounded-full text-[11px] font-semibold {{ 'bg-gray-900 text-amber-200' if user.role == 'admin' else 'bg-white/90 border border-[rgba(148,126,86,0.35)] text-gray-700' }}">
+                                {{ user.role }}
+                            </span>
+                        </div>
+                        <div class="mt-2 text-xs text-gray-600">
+                            <span class="font-semibold text-gray-800">User ID:</span> {{ user.user_id }}
+                        </div>
+                        <div class="text-xs text-gray-600">
+                            <span class="font-semibold text-gray-800">Email:</span> {{ user.email }}
+                        </div>
+                        <div class="mt-2 text-xs font-semibold {{ 'text-emerald-600' if user.is_verified else 'text-amber-700' }}">
+                            {{ 'Verified' if user.is_verified else 'Pending' }}
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+            <div class="mt-6 overflow-x-auto hidden md:block">
                 <table class="min-w-full text-sm text-left text-gray-700">
                     <thead>
                         <tr class="text-xs uppercase tracking-widest text-gray-400">
@@ -96,7 +119,7 @@
             <h2 class="text-xl font-semibold text-gray-900">Remove a User</h2>
             <p class="text-sm text-gray-600 mt-1">Send a custom message explaining the removal.</p>
 
-            <form method="POST" action="{{ url_for('admin_delete_user') }}" class="mt-6 space-y-5">
+            <form method="POST" action="{{ url_for('admin.admin_delete_user') }}" class="mt-6 space-y-5">
                 {% set ns = namespace(has_removable=false) %}
                 <div>
                     <label class="block text-sm font-semibold text-gray-800 mb-2">Select user</label>

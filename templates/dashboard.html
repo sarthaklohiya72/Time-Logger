@@ -237,29 +237,40 @@
 
     <!-- Minimal Header -->
     <header class="bg-white/90 backdrop-blur border-b border-slate-200 shadow-sm" role="banner">
-        <div class="max-w-7xl mx-auto px-8 py-6">
-            <div class="flex items-center justify-between">
-                <div>
-                    <h1 id="appTitleBtn" class="text-2xl font-semibold text-gray-900 tracking-tight cursor-pointer" aria-label="Sync and reload">Time Tracker Pro</h1>
-                    <p class="text-sm text-gray-500 mt-1">Personal productivity analytics</p>
+        <div class="max-w-7xl mx-auto px-4 md:px-8 py-4 md:py-6">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 md:gap-0">
+                <div class="flex items-center justify-between md:block">
+                    <div>
+                        <h1 id="appTitleBtn" class="text-xl md:text-2xl font-semibold text-gray-900 tracking-tight cursor-pointer" aria-label="Sync and reload">Time Tracker Pro</h1>
+                        <p class="text-xs md:text-sm text-gray-500 mt-0.5 md:mt-1">Personal productivity analytics</p>
+                    </div>
+                    <div class="flex items-center gap-2 md:hidden">
+                        {% if is_admin %}
+                            <a href="{{ url_for('admin.admin_users') }}" class="px-3 py-1.5 rounded-full bg-white/80 border border-[rgba(148,126,86,0.35)] text-xs font-semibold text-gray-700 hover:bg-[#F7F1E6] transition-all">Admin</a>
+                        {% endif %}
+                        {% if current_user and current_user.display_name %}
+                            <a href="{{ url_for('main.settings') }}" class="px-3 py-1.5 rounded-full bg-white/80 border border-[rgba(148,126,86,0.35)] text-xs font-semibold text-gray-700 hover:bg-[#F7F1E6] transition-all">Settings</a>
+                        {% endif %}
+                    </div>
                 </div>
-                <div class="flex items-center gap-4">
+                <div class="flex items-center gap-2 md:gap-4">
                     <!-- Period Selector -->
                     <div class="period-selector hidden md:flex">
                         <button class="period-btn {% if period == 'day' %}active{% endif %}" onclick="changePeriod('day')">Day</button>
                         <button class="period-btn {% if period == 'week' %}active{% endif %}" onclick="changePeriod('week')">Week</button>
                         <button class="period-btn {% if period == 'month' %}active{% endif %}" onclick="changePeriod('month')">Month</button>
                     </div>
-                    <div id="datePicker" class="relative">
-                        <button type="button" onclick="toggleDatePicker()" class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/80 border border-[rgba(148,126,86,0.35)] text-sm text-gray-700 shadow-sm hover:bg-[#F7F1E6] transition-all duration-200">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-700">
+                    <div id="datePicker" class="relative flex-1 md:flex-none">
+                        <button type="button" onclick="toggleDatePicker()" class="w-full md:w-auto inline-flex items-center justify-center gap-1.5 md:gap-2 px-3 md:px-4 py-2 rounded-full bg-white/80 border border-[rgba(148,126,86,0.35)] text-xs md:text-sm text-gray-700 shadow-sm hover:bg-[#F7F1E6] transition-all duration-200">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-700 md:w-4 md:h-4">
                                 <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
                                 <line x1="16" y1="2" x2="16" y2="6"></line>
                                 <line x1="8" y1="2" x2="8" y2="6"></line>
                                 <line x1="3" y1="10" x2="21" y2="10"></line>
                             </svg>
-                            <span class="text-xs font-medium tracking-wide text-gray-700">
-                                {{ selected_date.strftime("%b %-d, %Y") if selected_date else "" }}
+                            <span class="text-xs md:text-xs font-medium tracking-wide text-gray-700">
+                                <span class="hidden sm:inline">{{ selected_date.strftime("%b %-d, %Y") if selected_date else "" }}</span>
+                                <span class="sm:hidden">{{ selected_date.strftime("%b %-d") if selected_date else "" }}</span>
                             </span>
                         </button>
                         <div id="dateDropdown" class="hidden absolute left-1/2 -translate-x-1/2 md:left-auto md:translate-x-0 md:right-0 mt-3 w-72 rounded-2xl bg-[#FEFCF8] border border-[rgba(148,126,86,0.35)] shadow-2xl shadow-[rgba(15,23,42,0.18)] p-4 z-50">
@@ -279,12 +290,12 @@
                             <div class="px-3 py-2 rounded-full bg-white/80 border border-[rgba(148,126,86,0.35)] text-xs font-semibold text-gray-800">
                                 {{ current_user.display_name }}
                             </div>
-                            <a href="{{ url_for('graphs') }}" class="px-3 py-2 rounded-full bg-white/80 border border-[rgba(148,126,86,0.35)] text-xs font-semibold text-gray-700 hover:bg-[#F7F1E6] transition-all">Graphs</a>
+                            <a href="{{ url_for('main.graphs') }}" class="px-3 py-2 rounded-full bg-white/80 border border-[rgba(148,126,86,0.35)] text-xs font-semibold text-gray-700 hover:bg-[#F7F1E6] transition-all">Graphs</a>
                             {% if is_admin %}
-                                <a href="{{ url_for('admin_users') }}" class="px-3 py-2 rounded-full bg-white/80 border border-[rgba(148,126,86,0.35)] text-xs font-semibold text-gray-700 hover:bg-[#F7F1E6] transition-all">Admin</a>
+                                <a href="{{ url_for('admin.admin_users') }}" class="px-3 py-2 rounded-full bg-white/80 border border-[rgba(148,126,86,0.35)] text-xs font-semibold text-gray-700 hover:bg-[#F7F1E6] transition-all">Admin</a>
                             {% endif %}
-                            <a href="{{ url_for('settings') }}" class="px-3 py-2 rounded-full bg-white/80 border border-[rgba(148,126,86,0.35)] text-xs font-semibold text-gray-700 hover:bg-[#F7F1E6] transition-all">Settings</a>
-                            <a href="{{ url_for('logout') }}" class="px-3 py-2 rounded-full bg-gray-900 text-amber-300 text-xs font-semibold shadow-lg">Logout</a>
+                            <a href="{{ url_for('main.settings') }}" class="px-3 py-2 rounded-full bg-white/80 border border-[rgba(148,126,86,0.35)] text-xs font-semibold text-gray-700 hover:bg-[#F7F1E6] transition-all">Settings</a>
+                            <a href="{{ url_for('auth.logout') }}" class="px-3 py-2 rounded-full bg-gray-900 text-amber-300 text-xs font-semibold shadow-lg">Logout</a>
                         </div>
                     {% endif %}
                 </div>
@@ -912,10 +923,8 @@
                 .then(data => {
                     console.log('Data received:', data);
                     setGlobalLoading(false);
-                    if (filterType === 'all') {
-                        window.modalSort = 'time_asc';
-                        window.modalSortLabel = 'Time ↑';
-                    }
+                    window.modalSort = 'time_desc';
+                    window.modalSortLabel = 'Time ↓';
                     window.showModal(title, data, filterType);
                 })
                 .catch(error => {
@@ -936,7 +945,7 @@
             const hidden = window.hiddenTags || {};
             const tasks = window.modalData.tasks || [];
             const filterType = window.modalFilterType || 'all';
-            const sortKey = window.modalSort || 'duration_desc';
+            const sortKey = window.modalSort || 'time_desc';
             const timeToMinutes = (value) => {
                 if (!value) return 0;
                 const parts = String(value).trim().match(/(\d{1,2})(?::(\d{2}))?\s*(AM|PM)?/i);
@@ -967,10 +976,11 @@
                 task_az: (a, b) => String(a.task || '').localeCompare(String(b.task || '')),
                 task_za: (a, b) => String(b.task || '').localeCompare(String(a.task || '')),
                 tag_az: (a, b) => normalizeTagName(a.tag).localeCompare(normalizeTagName(b.tag)),
+                tag_za: (a, b) => normalizeTagName(b.tag).localeCompare(normalizeTagName(a.tag)),
                 imp_desc: (a, b) => Number(b.important) - Number(a.important),
                 urg_desc: (a, b) => Number(b.urgent) - Number(a.urgent)
             };
-            active.sort(sorters[sortKey] || sorters.duration_desc);
+            active.sort(sorters[sortKey] || sorters.time_desc);
             if (active.length === 0) {
                 container.innerHTML = '<div class="text-center py-8 text-gray-400">No tasks found</div>';
                 return;
@@ -1169,23 +1179,50 @@
             }
             const chartContainer = document.getElementById('modalChart');
             chartContainer.innerHTML = '<canvas id="filterChart"></canvas>';
+            const sortLabels = {
+                time_desc: 'Time ↓',
+                time_asc: 'Time ↑',
+                duration_desc: 'Duration ↓',
+                duration_asc: 'Duration ↑',
+                task_az: 'Task A→Z',
+                task_za: 'Task Z→A',
+                tag_az: 'Tag A→Z',
+                tag_za: 'Tag Z→A',
+                imp_desc: 'Important first',
+                urg_desc: 'Urgent first'
+            };
+            const sortToggles = {
+                time: ['time_desc', 'time_asc'],
+                duration: ['duration_desc', 'duration_asc'],
+                task: ['task_az', 'task_za'],
+                tag: ['tag_az', 'tag_za']
+            };
+            const resolveSort = (base) => {
+                const options = sortToggles[base];
+                if (!options) {
+                    const fallback = base === 'imp' ? 'imp_desc' : base === 'urg' ? 'urg_desc' : 'time_desc';
+                    return { key: fallback, label: sortLabels[fallback] || 'Time ↓' };
+                }
+                const current = window.modalSort;
+                const next = options.includes(current)
+                    ? (current === options[0] ? options[1] : options[0])
+                    : options[0];
+                return { key: next, label: sortLabels[next] || 'Time ↓' };
+            };
             const tools = document.getElementById('modalTools');
             if (tools) {
                 tools.innerHTML = `
                     <div class="relative">
                         <button id="modalSortBtn" class="px-3 py-1.5 rounded-full bg-white border border-slate-200 text-xs text-gray-700 shadow-sm active:scale-[0.98] transition">
-                            Sort: <span id="modalSortLabel">${window.modalSortLabel || 'Duration ↓'}</span>
+                            Sort: <span id="modalSortLabel">${sortLabels[window.modalSort] || window.modalSortLabel || 'Time ↓'}</span>
                         </button>
                         <div id="modalSortMenu" class="absolute right-0 mt-2 w-44 bg-white rounded-xl shadow-2xl border border-slate-200 hidden">
-                            <div class="dropdown-item" data-key="time_asc">Time ↑</div>
-                            <div class="dropdown-item" data-key="time_desc">Time ↓</div>
-                            <div class="dropdown-item" data-key="duration_desc">Duration ↓</div>
-                            <div class="dropdown-item" data-key="duration_asc">Duration ↑</div>
-                            <div class="dropdown-item" data-key="task_az">Task A→Z</div>
-                            <div class="dropdown-item" data-key="task_za">Task Z→A</div>
-                            <div class="dropdown-item" data-key="tag_az">Tag A→Z</div>
-                            <div class="dropdown-item" data-key="imp_desc">Important first</div>
-                            <div class="dropdown-item" data-key="urg_desc">Urgent first</div>
+                            <div class="dropdown-item" data-key="time">Time</div>
+                            <div class="dropdown-item" data-key="duration">Duration</div>
+                            <div class="dropdown-item" data-key="task">Task</div>
+                            <div class="dropdown-item" data-key="tag">Tag</div>
+                            <div class="dropdown-item" data-key="imp">Important first</div>
+                            <div class="dropdown-item" data-key="urg">Urgent first</div>
                         </div>
                     </div>
                 `;
@@ -1196,11 +1233,11 @@
                     btn.onclick = () => menu.classList.toggle('hidden');
                     menu.querySelectorAll('.dropdown-item').forEach(item => {
                         item.onclick = () => {
-                            const key = item.getAttribute('data-key');
-                            const text = item.textContent;
-                            window.modalSort = key;
-                            window.modalSortLabel = text;
-                            label.textContent = text;
+                            const base = item.getAttribute('data-key');
+                            const next = resolveSort(base);
+                            window.modalSort = next.key;
+                            window.modalSortLabel = next.label;
+                            label.textContent = next.label;
                             menu.classList.add('hidden');
                             window.renderModalTasks();
                         };
@@ -1400,7 +1437,7 @@
             if (tagsBtn) tagsBtn.onclick = () => { smoothScrollTo('tags'); setActiveNav('navTags'); };
             if (graphsBtn) graphsBtn.onclick = () => {
                 setActiveNav('navGraphs');
-                window.location.href = "{{ url_for('graphs') }}";
+                window.location.href = "{{ url_for('main.graphs') }}";
             };
             if (filterBtn) {
                 filterBtn.onclick = () => {
@@ -1609,27 +1646,39 @@
                 if (mins === 0) return `${hrs} hr`;
                 return `${hrs} hr ${mins} min`;
             }
-            const titleBtn = document.getElementById('appTitleBtn');
-            if (titleBtn) {
-                titleBtn.addEventListener('click', async () => {
-                    try {
+            async function runManualSync({ reload = true, showLoading = true } = {}) {
+                try {
+                    if (showLoading) {
                         setGlobalLoading(true, '');
-                        const r = await fetch('/sync-now', { method: 'GET', credentials: 'include' });
-                        if (r.status === 401) {
-                            const nextUrl = encodeURIComponent(window.location.pathname + window.location.search);
-                            window.location.href = `/login?next=${nextUrl}`;
-                            return;
-                        }
-                        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-                        await r.json();
+                    }
+                    const r = await fetch('/sync-now', { method: 'GET', credentials: 'include' });
+                    if (r.status === 401) {
+                        const nextUrl = encodeURIComponent(window.location.pathname + window.location.search);
+                        window.location.href = `/login?next=${nextUrl}`;
+                        return;
+                    }
+                    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+                    await r.json();
+                    if (showLoading) {
                         setGlobalLoading(false, '');
+                    }
+                    if (reload) {
                         window.location.href = `/?date=${window.currentDate}&period=${window.currentPeriod}`;
-                    } catch (e) {
-                        console.error('Manual sync failed', e);
+                    }
+                } catch (e) {
+                    console.error('Manual sync failed', e);
+                    if (showLoading) {
                         setGlobalLoading(false, 'Failed to sync from cloud');
                     }
-                });
+                }
             }
+            const titleBtn = document.getElementById('appTitleBtn');
+            if (titleBtn) {
+                titleBtn.addEventListener('click', () => runManualSync());
+            }
+            setTimeout(() => {
+                runManualSync({ reload: false, showLoading: false });
+            }, 2000);
             function attachHoverSwap() {
                 document.querySelectorAll('.js-hover-hours').forEach(el => {
                     if (el.__hoverBound) return;

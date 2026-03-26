@@ -38,7 +38,7 @@
                 {% if show_verify %}
                     <div class="mb-4 px-4 py-3 rounded-2xl bg-amber-50 border border-amber-200 text-sm text-amber-800">
                         Need to verify your email?
-                        <a href="{{ url_for('verify_email') }}" class="font-semibold underline underline-offset-4">Enter code</a>
+                        <a href="{{ url_for('auth.verify_email') }}" class="font-semibold underline underline-offset-4">Enter code</a>
                     </div>
                 {% endif %}
 
@@ -67,7 +67,7 @@
 
                 <div class="mt-6 text-sm text-gray-700">
                     Don’t have an account?
-                    <a href="{{ url_for('register') }}" class="font-semibold text-gray-900 underline underline-offset-4">Create one</a>
+                    <a href="{{ url_for('auth.register') }}" class="font-semibold text-gray-900 underline underline-offset-4">Create one</a>
                 </div>
             </div>
         </div>
