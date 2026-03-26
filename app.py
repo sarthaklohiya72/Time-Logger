@@ -11,7 +11,7 @@ from flask import send_file
 import pandas as pd
 import requests
 from dotenv import load_dotenv
-from flask import Flask, jsonify, render_template, request, make_response, redirect, session, url_for
+from flask import Flask, jsonify, render_template, request, make_response, redirect, session, url_for, g
 from io import StringIO
 from werkzeug.security import check_password_hash, generate_password_hash
 
@@ -165,15 +165,77 @@ def get_current_user_id() -> Optional[int]:
         return None
 
 
+def _get_user_count() -> int:
+    conn = get_db_connection()
+    row = conn.execute("SELECT COUNT(*) AS c FROM users").fetchone()
+    conn.close()
+    return int(row["c"] if row else 0)
+
+
+def _token_is_valid(headers: Dict[str, str]) -> bool:
+    expected = os.getenv(API_AUTH_TOKEN_ENV)
+    if not expected:
+        return False
+    provided = headers.get("X-API-Token") or request.args.get("token") or request.cookies.get("tt_token")
+    return bool(provided and provided == expected)
+
+
+def resolve_request_user_id(headers: Dict[str, str]) -> Optional[int]:
+    session_uid = get_current_user_id()
+    if session_uid is not None:
+        return int(session_uid)
+
+    if not _token_is_valid(headers):
+        return None
+
+    raw_user_id = request.args.get("user_id") or request.headers.get("X-User-Id")
+    raw_username = request.args.get("username") or request.headers.get("X-Username")
+
+    if raw_user_id:
+        try:
+            return int(raw_user_id)
+        except Exception:
+            return None
+
+    if raw_username:
+        user = _get_user_by_username(raw_username)
+        if not user:
+            return None
+        return int(user["id"])
+
+    conn = get_db_connection()
+    row = conn.execute("SELECT id FROM users ORDER BY id ASC LIMIT 1").fetchone()
+    count_row = conn.execute("SELECT COUNT(*) AS c FROM users").fetchone()
+    conn.close()
+    if row and int(count_row["c"]) == 1:
+        return int(row["id"])
+    return None
+
+
 def login_required(fn):
     @wraps(fn)
     def wrapper(*args, **kwargs):
         uid = get_current_user_id()
         if uid is not None:
             return fn(*args, **kwargs)
+        if _get_user_count() == 0:
+            return redirect(url_for("register"))
         if request.path.startswith("/api/"):
             return jsonify({"error": "Unauthorized"}), 401
         return redirect(url_for("login", next=_safe_next_url(request.full_path or request.path)))
+
+    return wrapper
+
+
+def api_or_login_required(fn):
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        headers = dict(request.headers)
+        uid = resolve_request_user_id(headers)
+        if uid is None:
+            return jsonify({"error": "Unauthorized"}), 401
+        g.user_id = int(uid)
+        return fn(*args, **kwargs)
 
     return wrapper
 
@@ -231,14 +293,6 @@ def upsert_user_settings(user_id: int, sheety_endpoint: Optional[str], sheety_to
 # --- CALL THE FUNCTION HERE ---
 init_db()
 # ------------------------------
-
-class TimeLogParser:
-    def __init__(self) -> None:
-        self.time_pattern = re.compile(
-            r"^(\d{1,2})(?:[:\s]?(\d{2}))?\s*([ap]m)?\s*",
-            re.IGNORECASE,
-        )
-
 
 class TimeLogParser:
     def __init__(self) -> None:
@@ -824,9 +878,9 @@ def dashboard():
 
 
 @app.route("/api/tasks")
-@login_required
+@api_or_login_required
 def get_tasks():
-    user_id = int(get_current_user_id() or 0)
+    user_id = int(getattr(g, "user_id", 0) or 0)
 
     date_str = request.args.get("date")
     raw_period = request.args.get("period", "day")
@@ -983,9 +1037,9 @@ def get_tasks():
 
 
 @app.route("/api/tags")
-@login_required
+@api_or_login_required
 def get_tags():
-    user_id = int(get_current_user_id() or 0)
+    user_id = int(getattr(g, "user_id", 0) or 0)
 
     date_str = request.args.get("date")
     raw_period = request.args.get("period", "day")
@@ -1040,12 +1094,15 @@ def download_db():
     Downloads the live production database file.
     """
     try:
-        expected = os.getenv(API_AUTH_TOKEN_ENV)
-        if not expected:
+        headers = dict(request.headers)
+        if not _token_is_valid(headers):
             return "Unauthorized", 401
-        provided = request.headers.get("X-API-Token") or request.args.get("token") or request.cookies.get("tt_token")
-        if provided != expected:
-            return "Unauthorized", 401
+        resolved_user_id = resolve_request_user_id(headers)
+        if resolved_user_id is not None:
+            try:
+                sync_cloud_data(int(resolved_user_id))
+            except Exception:
+                pass
         return send_file(DB_NAME, as_attachment=True)
     except Exception as e:
         return f"Error downloading DB: {e}"
@@ -1053,7 +1110,10 @@ def download_db():
 @app.route("/sync-status")
 def sync_status():
     try:
+        headers = dict(request.headers)
         user_id = get_current_user_id()
+        if user_id is None and _token_is_valid(headers):
+            user_id = resolve_request_user_id(headers)
         if user_id is not None:
             settings = get_user_settings(int(user_id))
             status = {
@@ -1081,10 +1141,10 @@ def sync_status():
         return jsonify({"error": str(exc)}), 500
 
 @app.route("/sync-now")
-@login_required
+@api_or_login_required
 def sync_now():
     try:
-        user_id = int(get_current_user_id() or 0)
+        user_id = int(getattr(g, "user_id", 0) or 0)
         sync_cloud_data(user_id, force=True)
         return jsonify({"status": "success", "message": "Synced latest data from cloud"})
     except Exception as exc:
@@ -1093,10 +1153,10 @@ def sync_now():
 
 
 @app.route("/hard-reset")
-@login_required
+@api_or_login_required
 def hard_reset():
     try:
-        user_id = int(get_current_user_id() or 0)
+        user_id = int(getattr(g, "user_id", 0) or 0)
         sync_cloud_data(user_id, force=True)
         return jsonify(
             {
@@ -1110,10 +1170,10 @@ def hard_reset():
 
 
 @app.route("/api/import-csv", methods=["POST"])
-@login_required
+@api_or_login_required
 def import_csv():
     """Import data from CSV format (Google Sheets export)"""
-    user_id = int(get_current_user_id() or 0)
+    user_id = int(getattr(g, "user_id", 0) or 0)
     
     try:
         data = request.get_json()

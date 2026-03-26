@@ -868,6 +868,17 @@
             const tasks = window.modalData.tasks || [];
             const filterType = window.modalFilterType || 'all';
             const sortKey = window.modalSort || 'duration_desc';
+            const timeToMinutes = (value) => {
+                if (!value) return 0;
+                const parts = String(value).trim().match(/(\d{1,2})(?::(\d{2}))?\s*(AM|PM)?/i);
+                if (!parts) return 0;
+                let hour = Number(parts[1] || 0);
+                const minute = Number(parts[2] || 0);
+                const meridian = (parts[3] || '').toUpperCase();
+                if (meridian === 'PM' && hour < 12) hour += 12;
+                if (meridian === 'AM' && hour === 12) hour = 0;
+                return (hour * 60) + minute;
+            };
             const getKey = (task) => {
                 if (filterType === 'tag') {
                     if (task.urgent && task.important) return 'Critical';
@@ -881,8 +892,12 @@
                 ? tasks.filter(t => !hidden[getKey(t)])
                 : tasks.slice();
             const sorters = {
+                time_asc: (a, b) => timeToMinutes(a.start_time) - timeToMinutes(b.start_time),
+                time_desc: (a, b) => timeToMinutes(b.start_time) - timeToMinutes(a.start_time),
                 duration_desc: (a, b) => (b.duration || 0) - (a.duration || 0),
                 duration_asc: (a, b) => (a.duration || 0) - (b.duration || 0),
+                task_az: (a, b) => String(a.task || '').localeCompare(String(b.task || '')),
+                task_za: (a, b) => String(b.task || '').localeCompare(String(a.task || '')),
                 tag_az: (a, b) => normalizeTagName(a.tag).localeCompare(normalizeTagName(b.tag)),
                 imp_desc: (a, b) => Number(b.important) - Number(a.important),
                 urg_desc: (a, b) => Number(b.urgent) - Number(a.urgent)
@@ -1064,9 +1079,13 @@
                         <button id="modalSortBtn" class="px-3 py-1.5 rounded-full bg-white border border-slate-200 text-xs text-gray-700 shadow-sm active:scale-[0.98] transition">
                             Sort: <span id="modalSortLabel">${window.modalSortLabel || 'Duration ↓'}</span>
                         </button>
-                        <div id="modalSortMenu" class="absolute right-0 mt-2 w-40 bg-white rounded-xl shadow-2xl border border-slate-200 hidden">
+                        <div id="modalSortMenu" class="absolute right-0 mt-2 w-44 bg-white rounded-xl shadow-2xl border border-slate-200 hidden">
+                            <div class="dropdown-item" data-key="time_asc">Time ↑</div>
+                            <div class="dropdown-item" data-key="time_desc">Time ↓</div>
                             <div class="dropdown-item" data-key="duration_desc">Duration ↓</div>
                             <div class="dropdown-item" data-key="duration_asc">Duration ↑</div>
+                            <div class="dropdown-item" data-key="task_az">Task A→Z</div>
+                            <div class="dropdown-item" data-key="task_za">Task Z→A</div>
                             <div class="dropdown-item" data-key="tag_az">Tag A→Z</div>
                             <div class="dropdown-item" data-key="imp_desc">Important first</div>
                             <div class="dropdown-item" data-key="urg_desc">Urgent first</div>
