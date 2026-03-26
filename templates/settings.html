@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings - Time Tracker Pro</title>
+    <script src="https://cdn.tailwindcss.com" defer></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: radial-gradient(circle at top left, #F7F1E6 0%, #F2E6D5 40%, #E9DDCB 100%);
+            color: #111827;
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+        }
+        .luxury-card {
+            background: linear-gradient(135deg, #FEFCF8, #F5EDE1);
+            border: 1px solid rgba(148, 126, 86, 0.18);
+            box-shadow: 0 18px 40px rgba(15, 23, 42, 0.06);
+        }
+    </style>
+</head>
+<body class="antialiased overflow-x-hidden">
+    <header class="bg-white/90 backdrop-blur border-b border-slate-200 shadow-sm" role="banner">
+        <div class="max-w-3xl mx-auto px-6 py-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 class="text-2xl font-semibold text-gray-900 tracking-tight">Settings</h1>
+                    <p class="text-sm text-gray-500 mt-1">Logged in as {{ current_user.username }}</p>
+                </div>
+                <div class="flex items-center gap-3">
+                    <a href="{{ url_for('dashboard') }}" class="px-4 py-2 rounded-full bg-white/80 border border-[rgba(148,126,86,0.35)] text-sm text-gray-700 hover:bg-[#F7F1E6] transition-all">Back</a>
+                    <a href="{{ url_for('logout') }}" class="px-4 py-2 rounded-full bg-gray-900 text-amber-300 text-sm font-semibold shadow-lg">Logout</a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-3xl mx-auto px-6 py-10">
+        <div class="luxury-card rounded-3xl p-8">
+            <h2 class="text-xl font-semibold text-gray-900">Sheety Sync</h2>
+            <p class="text-sm text-gray-600 mt-1">Each user can connect their own Sheety project. This keeps data separate across users.</p>
+
+            <form method="POST" class="mt-6 space-y-5">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Sheety Endpoint URL</label>
+                    <input name="sheety_endpoint" value="{{ settings.sheety_endpoint or '' }}" placeholder="https://api.sheety.co/..." class="w-full px-4 py-3 rounded-2xl bg-white/80 border border-[rgba(148,126,86,0.35)] focus:outline-none focus:ring-2 focus:ring-amber-300" />
+                    {% if env_sheety %}
+                        <p class="text-xs text-gray-500 mt-2">Fallback: server env <code class="font-mono">SHEETY_ENDPOINT</code> is set.</p>
+                    {% endif %}
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Sheety Token (optional)</label>
+                    <input name="sheety_token" value="{{ settings.sheety_token or '' }}" placeholder="Bearer token (if your Sheety needs auth)" class="w-full px-4 py-3 rounded-2xl bg-white/80 border border-[rgba(148,126,86,0.35)] focus:outline-none focus:ring-2 focus:ring-amber-300" />
+                    <p class="text-xs text-gray-500 mt-2">Stored per-user in SQLite. Never hardcode secrets into templates.</p>
+                </div>
+
+                <button type="submit" class="w-full py-3 rounded-2xl bg-gray-900 text-amber-300 font-semibold shadow-lg active:scale-[0.99] transition-transform">
+                    Save Settings
+                </button>
+            </form>
+        </div>
+    </main>
+</body>
+</html>

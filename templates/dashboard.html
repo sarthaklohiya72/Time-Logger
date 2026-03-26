@@ -274,6 +274,15 @@
                             <div id="dateGrid" class="grid grid-cols-7 gap-1 text-xs"></div>
                         </div>
                     </div>
+                    {% if current_user and current_user.username %}
+                        <div class="hidden md:flex items-center gap-2 pl-2">
+                            <div class="px-3 py-2 rounded-full bg-white/80 border border-[rgba(148,126,86,0.35)] text-xs font-semibold text-gray-800">
+                                {{ current_user.username }}
+                            </div>
+                            <a href="{{ url_for('settings') }}" class="px-3 py-2 rounded-full bg-white/80 border border-[rgba(148,126,86,0.35)] text-xs font-semibold text-gray-700 hover:bg-[#F7F1E6] transition-all">Settings</a>
+                            <a href="{{ url_for('logout') }}" class="px-3 py-2 rounded-full bg-gray-900 text-amber-300 text-xs font-semibold shadow-lg">Logout</a>
+                        </div>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -825,6 +834,11 @@
             fetch(url)
                 .then(r => {
                     console.log('Response status:', r.status);
+                    if (r.status === 401) {
+                        const nextUrl = encodeURIComponent(window.location.pathname + window.location.search);
+                        window.location.href = `/login?next=${nextUrl}`;
+                        throw new Error('Unauthorized');
+                    }
                     if (!r.ok) {
                         throw new Error(`HTTP error! status: ${r.status}`);
                     }
@@ -1476,6 +1490,11 @@
                     try {
                         setGlobalLoading(true, '');
                         const r = await fetch('/sync-now', { method: 'GET', credentials: 'include' });
+                        if (r.status === 401) {
+                            const nextUrl = encodeURIComponent(window.location.pathname + window.location.search);
+                            window.location.href = `/login?next=${nextUrl}`;
+                            return;
+                        }
                         if (!r.ok) throw new Error(`HTTP ${r.status}`);
                         await r.json();
                         setGlobalLoading(false, '');

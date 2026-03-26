@@ -5,13 +5,15 @@ import os
 import re
 import sqlite3
 from datetime import datetime, timedelta, timezone
+from functools import wraps
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 from flask import send_file
 import pandas as pd
 import requests
 from dotenv import load_dotenv
-from flask import Flask, jsonify, render_template, request, make_response
+from flask import Flask, jsonify, render_template, request, make_response, redirect, session, url_for
 from io import StringIO
+from werkzeug.security import check_password_hash, generate_password_hash
 
 load_dotenv()
 
@@ -22,6 +24,14 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
+app.secret_key = os.getenv("SECRET_KEY", "dev-secret-change-me")
+app.config.update(
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE="Lax",
+)
+if os.getenv("SESSION_COOKIE_SECURE"):
+    app.config["SESSION_COOKIE_SECURE"] = True
+app.permanent_session_lifetime = timedelta(days=int(os.getenv("SESSION_LIFETIME_DAYS", "30")))
 
 DB_NAME = "productivity.db"
 SHEETY_ENDPOINT_ENV = "SHEETY_ENDPOINT"
@@ -30,8 +40,8 @@ SYNC_INTERVAL_SECONDS = int(os.getenv("SYNC_INTERVAL_SECONDS", "300"))
 SYNC_FAIL_COOLDOWN_SECONDS = int(os.getenv("SYNC_FAIL_COOLDOWN_SECONDS", "1800"))
 SPECIAL_TAGS = {"Work", "Necessity", "Soul", "Rest", "Waste"}
 
-_LAST_SYNC_TS: Optional[datetime] = None
-_LAST_SYNC_FAIL_TS: Optional[datetime] = None
+_LAST_SYNC_TS_BY_USER: Dict[int, datetime] = {}
+_LAST_SYNC_FAIL_TS_BY_USER: Dict[int, datetime] = {}
 
 def human_hours(h: float) -> str:
     total = max(0, int(round(float(h) * 60)))
@@ -89,6 +99,26 @@ def init_db() -> None:
         conn = get_db_connection()
         conn.execute(
             """
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT UNIQUE NOT NULL,
+                password_hash TEXT NOT NULL,
+                created_at TEXT
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS user_settings (
+                user_id INTEGER PRIMARY KEY,
+                sheety_endpoint TEXT,
+                sheety_token TEXT,
+                FOREIGN KEY(user_id) REFERENCES users(id)
+            )
+            """
+        )
+        conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS logs (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 start_date TEXT,
@@ -99,14 +129,103 @@ def init_db() -> None:
                 duration INTEGER,
                 tags TEXT,
                 urg INTEGER,
-                imp INTEGER
+                imp INTEGER,
+                user_id INTEGER DEFAULT 0
             )
             """
+        )
+        cols = [row["name"] for row in conn.execute("PRAGMA table_info(logs)").fetchall()]
+        if "user_id" not in cols:
+            conn.execute("ALTER TABLE logs ADD COLUMN user_id INTEGER DEFAULT 0")
+            conn.execute("UPDATE logs SET user_id = 0 WHERE user_id IS NULL")
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_logs_user_start ON logs(user_id, start_date, start_time)"
         )
         conn.commit()
         conn.close()
     except Exception as exc:
         logger.exception("DB initialization error: %s", exc)
+
+
+def _safe_next_url(raw: Optional[str]) -> Optional[str]:
+    if not raw:
+        return None
+    if raw.startswith("/") and not raw.startswith("//"):
+        return raw
+    return None
+
+
+def get_current_user_id() -> Optional[int]:
+    uid = session.get("user_id")
+    if uid is None:
+        return None
+    try:
+        return int(uid)
+    except Exception:
+        return None
+
+
+def login_required(fn):
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        uid = get_current_user_id()
+        if uid is not None:
+            return fn(*args, **kwargs)
+        if request.path.startswith("/api/"):
+            return jsonify({"error": "Unauthorized"}), 401
+        return redirect(url_for("login", next=_safe_next_url(request.full_path or request.path)))
+
+    return wrapper
+
+
+def _get_user_by_username(username: str) -> Optional[sqlite3.Row]:
+    conn = get_db_connection()
+    row = conn.execute(
+        "SELECT * FROM users WHERE username = ?",
+        (username.strip(),),
+    ).fetchone()
+    conn.close()
+    return row
+
+
+def _get_user_by_id(user_id: int) -> Optional[sqlite3.Row]:
+    conn = get_db_connection()
+    row = conn.execute(
+        "SELECT * FROM users WHERE id = ?",
+        (int(user_id),),
+    ).fetchone()
+    conn.close()
+    return row
+
+
+def get_user_settings(user_id: int) -> Dict[str, Optional[str]]:
+    conn = get_db_connection()
+    row = conn.execute(
+        "SELECT sheety_endpoint, sheety_token FROM user_settings WHERE user_id = ?",
+        (int(user_id),),
+    ).fetchone()
+    conn.close()
+    if not row:
+        return {"sheety_endpoint": None, "sheety_token": None}
+    return {"sheety_endpoint": row["sheety_endpoint"], "sheety_token": row["sheety_token"]}
+
+
+def upsert_user_settings(user_id: int, sheety_endpoint: Optional[str], sheety_token: Optional[str]) -> None:
+    endpoint = (sheety_endpoint or "").strip() or None
+    token = (sheety_token or "").strip() or None
+    conn = get_db_connection()
+    conn.execute(
+        """
+        INSERT INTO user_settings (user_id, sheety_endpoint, sheety_token)
+        VALUES (?, ?, ?)
+        ON CONFLICT(user_id) DO UPDATE SET
+            sheety_endpoint = excluded.sheety_endpoint,
+            sheety_token = excluded.sheety_token
+        """,
+        (int(user_id), endpoint, token),
+    )
+    conn.commit()
+    conn.close()
 
 
 # --- CALL THE FUNCTION HERE ---
@@ -232,39 +351,45 @@ class TimeLogParser:
         }
 
 
-def _should_sync(now: Optional[datetime] = None) -> bool:
-    global _LAST_SYNC_TS, _LAST_SYNC_FAIL_TS
+def _should_sync(user_id: int, now: Optional[datetime] = None) -> bool:
     current = now or datetime.now(timezone.utc)
-    if _LAST_SYNC_FAIL_TS and (current - _LAST_SYNC_FAIL_TS).total_seconds() < SYNC_FAIL_COOLDOWN_SECONDS:
+    last_fail = _LAST_SYNC_FAIL_TS_BY_USER.get(int(user_id))
+    if last_fail and (current - last_fail).total_seconds() < SYNC_FAIL_COOLDOWN_SECONDS:
         return False
-    if _LAST_SYNC_TS is None:
+    last_ok = _LAST_SYNC_TS_BY_USER.get(int(user_id))
+    if last_ok is None:
         return True
-    return (current - _LAST_SYNC_TS).total_seconds() > SYNC_INTERVAL_SECONDS
+    return (current - last_ok).total_seconds() > SYNC_INTERVAL_SECONDS
 
 
-def sync_cloud_data(force: bool = False) -> None:
-    global _LAST_SYNC_TS, _LAST_SYNC_FAIL_TS
+def sync_cloud_data(user_id: int, force: bool = False) -> None:
 
     if os.getenv("DISABLE_CLOUD_SYNC") and not force:
         logger.info("Cloud sync disabled by env; skipping (force=%s)", force)
         return
-    url = os.getenv(SHEETY_ENDPOINT_ENV)
+    settings = get_user_settings(int(user_id))
+    url = (settings.get("sheety_endpoint") or "").strip() or os.getenv(SHEETY_ENDPOINT_ENV)
     if not url:
         logger.info("SHEETY_ENDPOINT not configured; skipping cloud sync")
         return
 
+    headers: Dict[str, str] = {}
+    token = (settings.get("sheety_token") or "").strip()
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+
     now = datetime.now(timezone.utc)
-    if not force and not _should_sync(now):
+    if not force and not _should_sync(int(user_id), now):
         return
 
     try:
-        response = requests.get(url, timeout=15)
+        response = requests.get(url, headers=headers, timeout=15)
         # Check for 402 Payment Required before raising
         if response.status_code == 402:
             logger.warning("Sheety API returned 402 Payment Required. Skipping sync for extended period. "
                          "Consider upgrading Sheety plan or using alternative sync method.")
             # Set a longer backoff (24 hours) for payment required errors
-            _LAST_SYNC_FAIL_TS = now - timedelta(hours=23)  # Will allow retry after 24 hours
+            _LAST_SYNC_FAIL_TS_BY_USER[int(user_id)] = now - timedelta(hours=23)
             return
         response.raise_for_status()
         data = response.json()
@@ -311,23 +436,7 @@ def sync_cloud_data(force: bool = False) -> None:
                 final_rows.append(p)
 
         conn = get_db_connection()
-        conn.execute("DROP TABLE IF EXISTS logs")
-        conn.execute(
-            """
-            CREATE TABLE logs (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                start_date TEXT,
-                start_time TEXT,
-                end_date TEXT,
-                end_time TEXT,
-                task TEXT,
-                duration INTEGER,
-                tags TEXT,
-                urg INTEGER,
-                imp INTEGER
-            )
-            """
-        )
+        conn.execute("DELETE FROM logs WHERE user_id = ?", (int(user_id),))
 
         for p in final_rows:
             duration = int((p["end_dt"] - p["start_dt"]).total_seconds() / 60)
@@ -345,9 +454,10 @@ def sync_cloud_data(force: bool = False) -> None:
                     duration,
                     tags,
                     urg,
-                    imp
+                    imp,
+                    user_id
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     p["start_dt"].strftime("%Y-%m-%d"),
@@ -359,15 +469,16 @@ def sync_cloud_data(force: bool = False) -> None:
                     p["tag"], 
                     1 if p["urg"] else 0,
                     1 if p["imp"] else 0,
+                    int(user_id),
                 ),
             )
 
         conn.commit()
         conn.close()
-        _LAST_SYNC_TS = now
+        _LAST_SYNC_TS_BY_USER[int(user_id)] = now
         logger.info("Sync complete: strict end times enforced for %s rows", len(final_rows))
     except requests.RequestException as exc:
-        _LAST_SYNC_FAIL_TS = now
+        _LAST_SYNC_FAIL_TS_BY_USER[int(user_id)] = now
         # Handle 402 Payment Required specially - don't spam logs
         if hasattr(exc, 'response') and exc.response is not None and exc.response.status_code == 402:
             # For 402 errors, extend the backoff period significantly
@@ -375,20 +486,21 @@ def sync_cloud_data(force: bool = False) -> None:
             logger.warning("Sheety API returned 402 Payment Required. Skipping sync for extended period. "
                          "Consider upgrading Sheety plan or using alternative sync method.")
             # Set a longer backoff (24 hours) for payment required errors
-            _LAST_SYNC_FAIL_TS = now - timedelta(hours=23)  # Will allow retry after 24 hours
+            _LAST_SYNC_FAIL_TS_BY_USER[int(user_id)] = now - timedelta(hours=23)
             return
         logger.error("Network error during cloud sync: %s", exc)
     except Exception as exc:
-        _LAST_SYNC_FAIL_TS = now
+        _LAST_SYNC_FAIL_TS_BY_USER[int(user_id)] = now
         logger.exception("Unexpected sync error: %s", exc)
 
 
-def fetch_local_data() -> pd.DataFrame:
+def fetch_local_data(user_id: int) -> pd.DataFrame:
     try:
         conn = get_db_connection()
         df = pd.read_sql_query(
-            "SELECT * FROM logs ORDER BY start_date ASC, start_time ASC",
+            "SELECT * FROM logs WHERE user_id = ? ORDER BY start_date ASC, start_time ASC",
             conn,
+            params=(int(user_id),),
         )
         conn.close()
         if df.empty:
@@ -496,6 +608,8 @@ def get_period_range(selected_date: datetime.date, period: str) -> Tuple[datetim
 
 
 def require_api_auth(headers: Dict[str, str]) -> bool:
+    if get_current_user_id() is not None:
+        return True
     expected = os.getenv(API_AUTH_TOKEN_ENV)
     if not expected:
         return True
@@ -508,20 +622,126 @@ def require_api_auth(headers: Dict[str, str]) -> bool:
     return True
 
 
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if get_current_user_id() is not None:
+        return redirect(url_for("dashboard"))
+
+    next_url = _safe_next_url(request.args.get("next"))
+    error: Optional[str] = None
+
+    if request.method == "POST":
+        username = (request.form.get("username") or "").strip()
+        password = request.form.get("password") or ""
+        remember = bool(request.form.get("remember"))
+        next_url = _safe_next_url(request.form.get("next")) or next_url
+
+        if not username or not password:
+            error = "Username and password are required."
+        else:
+            user = _get_user_by_username(username)
+            if not user or not check_password_hash(user["password_hash"], password):
+                error = "Invalid username or password."
+            else:
+                session.clear()
+                session["user_id"] = int(user["id"])
+                session.permanent = remember
+
+                settings = get_user_settings(int(user["id"]))
+                if not (settings.get("sheety_endpoint") or os.getenv(SHEETY_ENDPOINT_ENV)):
+                    return redirect(url_for("settings"))
+
+                return redirect(next_url or url_for("dashboard"))
+
+    return render_template("login.html", error=error, next=next_url or "")
+
+
+@app.route("/register", methods=["GET", "POST"])
+def register():
+    if get_current_user_id() is not None:
+        return redirect(url_for("dashboard"))
+
+    error: Optional[str] = None
+
+    if request.method == "POST":
+        username = (request.form.get("username") or "").strip()
+        password = request.form.get("password") or ""
+        remember = bool(request.form.get("remember"))
+
+        if not username or not password:
+            error = "Username and password are required."
+        elif _get_user_by_username(username):
+            error = "Username already exists."
+        else:
+            created_at = datetime.now(timezone.utc).isoformat()
+            password_hash = generate_password_hash(password)
+            conn = get_db_connection()
+            existing_users = conn.execute("SELECT COUNT(*) AS c FROM users").fetchone()["c"]
+            cur = conn.execute(
+                "INSERT INTO users (username, password_hash, created_at) VALUES (?, ?, ?)",
+                (username, password_hash, created_at),
+            )
+            new_user_id = int(cur.lastrowid)
+
+            if int(existing_users) == 0:
+                conn.execute("UPDATE logs SET user_id = ? WHERE user_id = 0", (new_user_id,))
+
+            conn.commit()
+            conn.close()
+
+            session.clear()
+            session["user_id"] = new_user_id
+            session.permanent = remember
+
+            return redirect(url_for("settings"))
+
+    return render_template("register.html", error=error)
+
+
+@app.route("/logout")
+def logout():
+    session.clear()
+    return redirect(url_for("login"))
+
+
+@app.route("/settings", methods=["GET", "POST"])
+@login_required
+def settings():
+    user_id = int(get_current_user_id() or 0)
+    current = get_user_settings(user_id)
+
+    if request.method == "POST":
+        sheety_endpoint = request.form.get("sheety_endpoint")
+        sheety_token = request.form.get("sheety_token")
+        upsert_user_settings(user_id, sheety_endpoint, sheety_token)
+        return redirect(url_for("dashboard"))
+
+    user_row = _get_user_by_id(user_id)
+    current_user = {"id": user_id, "username": (user_row["username"] if user_row else "")}
+    return render_template(
+        "settings.html",
+        settings=current,
+        current_user=current_user,
+        env_sheety=os.getenv(SHEETY_ENDPOINT_ENV, ""),
+    )
+
+
 @app.route("/")
+@login_required
 def dashboard():
-    sync_cloud_data()
+    user_id = int(get_current_user_id() or 0)
+    sync_cloud_data(user_id)
     date_str = request.args.get("date")
     raw_period = request.args.get("period", "day")
     period = parse_period_param(raw_period)
 
     selected_date = parse_date_param(date_str)
 
-    df = fetch_local_data()
+    df = fetch_local_data(user_id)
     if df.empty:
         try:
-            sync_cloud_data(force=True)
-            df = fetch_local_data()
+            sync_cloud_data(user_id, force=True)
+            df = fetch_local_data(user_id)
         except Exception as exc:
             logger.exception("Backfill sync failed: %s", exc)
 
@@ -578,6 +798,9 @@ def dashboard():
     else:
         period_label = selected_date.strftime("%B %Y")
 
+    user_row = _get_user_by_id(user_id)
+    current_user = {"id": user_id, "username": (user_row["username"] if user_row else "")}
+
     resp = make_response(render_template(
         "dashboard.html",
         matrix=matrix,
@@ -589,6 +812,7 @@ def dashboard():
         period=period,
         start_date=start_date,
         end_date=end_date,
+        current_user=current_user,
     ))
     expected = os.getenv(API_AUTH_TOKEN_ENV)
     if expected:
@@ -600,9 +824,9 @@ def dashboard():
 
 
 @app.route("/api/tasks")
+@login_required
 def get_tasks():
-    if not require_api_auth(dict(request.headers)):
-        return jsonify({"error": "Unauthorized"}), 401
+    user_id = int(get_current_user_id() or 0)
 
     date_str = request.args.get("date")
     raw_period = request.args.get("period", "day")
@@ -612,11 +836,11 @@ def get_tasks():
 
     selected_date = parse_date_param(date_str)
 
-    df = fetch_local_data()
+    df = fetch_local_data(user_id)
     if df.empty:
         try:
-            sync_cloud_data(force=True)
-            df = fetch_local_data()
+            sync_cloud_data(user_id, force=True)
+            df = fetch_local_data(user_id)
         except Exception as exc:
             logger.exception("Backfill sync failed (tasks): %s", exc)
 
@@ -759,9 +983,9 @@ def get_tasks():
 
 
 @app.route("/api/tags")
+@login_required
 def get_tags():
-    if not require_api_auth(dict(request.headers)):
-        return jsonify({"error": "Unauthorized"}), 401
+    user_id = int(get_current_user_id() or 0)
 
     date_str = request.args.get("date")
     raw_period = request.args.get("period", "day")
@@ -769,11 +993,11 @@ def get_tags():
 
     selected_date = parse_date_param(date_str)
 
-    df = fetch_local_data()
+    df = fetch_local_data(user_id)
     if df.empty:
         try:
-            sync_cloud_data(force=True)
-            df = fetch_local_data()
+            sync_cloud_data(user_id, force=True)
+            df = fetch_local_data(user_id)
         except Exception as exc:
             logger.exception("Backfill sync failed (tags): %s", exc)
 
@@ -816,8 +1040,12 @@ def download_db():
     Downloads the live production database file.
     """
     try:
-        # Ensures the data is fresh before downloading
-        sync_cloud_data()
+        expected = os.getenv(API_AUTH_TOKEN_ENV)
+        if not expected:
+            return "Unauthorized", 401
+        provided = request.headers.get("X-API-Token") or request.args.get("token") or request.cookies.get("tt_token")
+        if provided != expected:
+            return "Unauthorized", 401
         return send_file(DB_NAME, as_attachment=True)
     except Exception as e:
         return f"Error downloading DB: {e}"
@@ -825,11 +1053,24 @@ def download_db():
 @app.route("/sync-status")
 def sync_status():
     try:
+        user_id = get_current_user_id()
+        if user_id is not None:
+            settings = get_user_settings(int(user_id))
+            status = {
+                "sheety_configured": bool(settings.get("sheety_endpoint") or os.getenv(SHEETY_ENDPOINT_ENV)),
+                "disable_cloud_sync": bool(os.getenv("DISABLE_CLOUD_SYNC")),
+                "last_sync": _LAST_SYNC_TS_BY_USER.get(int(user_id)).isoformat() if _LAST_SYNC_TS_BY_USER.get(int(user_id)) else None,
+                "last_sync_fail": _LAST_SYNC_FAIL_TS_BY_USER.get(int(user_id)).isoformat() if _LAST_SYNC_FAIL_TS_BY_USER.get(int(user_id)) else None,
+                "sync_interval_seconds": SYNC_INTERVAL_SECONDS,
+                "fail_cooldown_seconds": SYNC_FAIL_COOLDOWN_SECONDS,
+                "db_exists": os.path.exists(DB_NAME),
+            }
+            return jsonify(status)
         status = {
             "sheety_configured": bool(os.getenv(SHEETY_ENDPOINT_ENV)),
             "disable_cloud_sync": bool(os.getenv("DISABLE_CLOUD_SYNC")),
-            "last_sync": _LAST_SYNC_TS.isoformat() if _LAST_SYNC_TS else None,
-            "last_sync_fail": _LAST_SYNC_FAIL_TS.isoformat() if _LAST_SYNC_FAIL_TS else None,
+            "last_sync": None,
+            "last_sync_fail": None,
             "sync_interval_seconds": SYNC_INTERVAL_SECONDS,
             "fail_cooldown_seconds": SYNC_FAIL_COOLDOWN_SECONDS,
             "db_exists": os.path.exists(DB_NAME),
@@ -840,11 +1081,11 @@ def sync_status():
         return jsonify({"error": str(exc)}), 500
 
 @app.route("/sync-now")
+@login_required
 def sync_now():
-    if not require_api_auth(dict(request.headers)):
-        return jsonify({"status": "error", "message": "Unauthorized"}), 401
     try:
-        sync_cloud_data(force=True)
+        user_id = int(get_current_user_id() or 0)
+        sync_cloud_data(user_id, force=True)
         return jsonify({"status": "success", "message": "Synced latest data from cloud"})
     except Exception as exc:
         logger.exception("Sync now error: %s", exc)
@@ -852,11 +1093,11 @@ def sync_now():
 
 
 @app.route("/hard-reset")
+@login_required
 def hard_reset():
-    if not require_api_auth(dict(request.headers)):
-        return jsonify({"status": "error", "message": "Unauthorized"}), 401
     try:
-        sync_cloud_data(force=True)
+        user_id = int(get_current_user_id() or 0)
+        sync_cloud_data(user_id, force=True)
         return jsonify(
             {
                 "status": "success",
@@ -869,10 +1110,10 @@ def hard_reset():
 
 
 @app.route("/api/import-csv", methods=["POST"])
+@login_required
 def import_csv():
     """Import data from CSV format (Google Sheets export)"""
-    if not require_api_auth(dict(request.headers)):
-        return jsonify({"status": "error", "message": "Unauthorized"}), 401
+    user_id = int(get_current_user_id() or 0)
     
     try:
         data = request.get_json()
@@ -951,25 +1192,9 @@ def import_csv():
             else:
                 final_rows.append(p)
         
-        # Save to database
+        # Save to database (replace only the current user's rows)
         conn = get_db_connection()
-        conn.execute("DROP TABLE IF EXISTS logs")
-        conn.execute(
-            """
-            CREATE TABLE logs (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                start_date TEXT,
-                start_time TEXT,
-                end_date TEXT,
-                end_time TEXT,
-                task TEXT,
-                duration INTEGER,
-                tags TEXT,
-                urg INTEGER,
-                imp INTEGER
-            )
-            """
-        )
+        conn.execute("DELETE FROM logs WHERE user_id = ?", (int(user_id),))
         
         inserted_count = 0
         for p in final_rows:
@@ -981,9 +1206,9 @@ def import_csv():
                 """
                 INSERT INTO logs (
                     start_date, start_time, end_date, end_time,
-                    task, duration, tags, urg, imp
+                    task, duration, tags, urg, imp, user_id
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     p["start_dt"].strftime("%Y-%m-%d"),
@@ -995,6 +1220,7 @@ def import_csv():
                     p["tag"],
                     1 if p["urg"] else 0,
                     1 if p["imp"] else 0,
+                    int(user_id),
                 ),
             )
             inserted_count += 1
