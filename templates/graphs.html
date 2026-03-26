@@ -62,11 +62,14 @@
                 </div>
                 <div class="flex items-center gap-3">
                     <a href="{{ url_for('dashboard') }}" class="px-4 py-2 rounded-full bg-white/80 border border-[rgba(148,126,86,0.35)] text-sm text-gray-700 hover:bg-[#F7F1E6] transition-all">Back to Dashboard</a>
-                    {% if current_user and current_user.username %}
+                    {% if current_user and current_user.display_name %}
                         <div class="hidden md:flex items-center gap-2">
                             <div class="px-3 py-2 rounded-full bg-white/80 border border-[rgba(148,126,86,0.35)] text-xs font-semibold text-gray-800">
-                                {{ current_user.username }}
+                                {{ current_user.display_name }}
                             </div>
+                            {% if is_admin %}
+                                <a href="{{ url_for('admin_users') }}" class="px-3 py-2 rounded-full bg-white/80 border border-[rgba(148,126,86,0.35)] text-xs font-semibold text-gray-700 hover:bg-[#F7F1E6] transition-all">Admin</a>
+                            {% endif %}
                             <a href="{{ url_for('logout') }}" class="px-3 py-2 rounded-full bg-gray-900 text-amber-300 text-xs font-semibold shadow-lg">Logout</a>
                         </div>
                     {% endif %}
@@ -87,7 +90,7 @@
                     <label class="block text-xs md:text-sm font-medium text-gray-700 mb-3">What do you want to track?</label>
                     <div class="relative">
                         <button id="metricSelectBtn" class="w-full px-4 py-3 rounded-2xl bg-white/80 border border-[rgba(148,126,86,0.35)] text-left text-sm md:text-base text-gray-900 font-medium flex items-center justify-between hover:bg-[#F7F1E6] transition-all">
-                            <span id="metricSelectLabel">Important</span>
+                            <span id="metricSelectLabel">Work</span>
                             <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                             </svg>
@@ -119,8 +122,8 @@
                     <div class="mt-3">
                         <label class="block text-xs text-gray-500 mb-2">Moving average window</label>
                         <div class="flex gap-2">
-                            <button class="ma-pill soft-pill px-3 py-1.5 rounded-full text-xs font-medium text-gray-700" data-ma="7">7d</button>
-                            <button class="ma-pill soft-pill px-3 py-1.5 rounded-full text-xs font-medium text-gray-700 active" data-ma="14">14d</button>
+                            <button class="ma-pill soft-pill px-3 py-1.5 rounded-full text-xs font-medium text-gray-700 active" data-ma="7">7d</button>
+                            <button class="ma-pill soft-pill px-3 py-1.5 rounded-full text-xs font-medium text-gray-700" data-ma="14">14d</button>
                             <button class="ma-pill soft-pill px-3 py-1.5 rounded-full text-xs font-medium text-gray-700" data-ma="30">30d</button>
                         </div>
                     </div>
@@ -131,8 +134,8 @@
         <div class="luxury-card rounded-2xl md:rounded-3xl p-4 md:p-8 mb-6 md:mb-8">
             <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 md:gap-4 mb-5 md:mb-6">
                 <div>
-                    <h3 class="text-lg md:text-xl font-semibold text-gray-900" id="chartTitle">Important</h3>
-                    <p class="text-xs md:text-sm text-gray-500" id="chartSubtitle">Last 30 days</p>
+                    <h3 class="text-lg md:text-xl font-semibold text-gray-900" id="chartTitle">Work</h3>
+                    <p class="text-xs md:text-sm text-gray-500" id="chartSubtitle">Last 30 days · 7-day avg</p>
                 </div>
                 <button id="refreshGraph" class="primary-cta text-sm md:text-base px-4 md:px-6 py-2 md:py-3">Refresh</button>
             </div>
@@ -190,8 +193,8 @@
 
         let currentDays = 30;
         let chartInstance = null;
-        let currentMetric = 'important';
-        let maWindow = 14;
+        let currentMetric = 'work';
+        let maWindow = 7;
 
         const metricSelectBtn = document.getElementById('metricSelectBtn');
         const metricSelectLabel = document.getElementById('metricSelectLabel');
@@ -215,7 +218,7 @@
             return `${yyyy}-${mm}-${dd}`;
         }
 
-        function movingAverage(values, windowSize = 14) {
+        function movingAverage(values, windowSize = 7) {
             const result = [];
             for (let i = 0; i < values.length; i++) {
                 const start = Math.max(0, i - windowSize + 1);
@@ -322,7 +325,7 @@
 
             const label = metricLabels[metricKey] || 'Total time';
             chartTitle.textContent = label;
-            chartSubtitle.textContent = `Last ${currentDays} days · 7-day avg`;
+            chartSubtitle.textContent = `Last ${currentDays} days · ${maWindow}-day avg`;
         }
 
         async function fetchGraphData() {
@@ -375,14 +378,14 @@
             btn.addEventListener('click', () => {
                 document.querySelectorAll('.ma-pill').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
-                maWindow = Number(btn.dataset.ma || 14);
+                maWindow = Number(btn.dataset.ma || 7);
                 fetchGraphData();
             });
         });
 
         document.getElementById('refreshGraph').addEventListener('click', fetchGraphData);
 
-        currentMetric = 'important';
+        currentMetric = 'work';
         fetchGraphData();
     </script>
 </body>

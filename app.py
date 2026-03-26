@@ -3,6 +3,9 @@ from __future__ import annotations
 import logging
 import os
 import re
+import secrets
+import smtplib
+import socket
 import sqlite3
 from datetime import datetime, timedelta, timezone
 from functools import wraps
@@ -11,7 +14,8 @@ from flask import send_file
 import pandas as pd
 import requests
 from dotenv import load_dotenv
-from flask import Flask, jsonify, render_template, request, make_response, redirect, session, url_for, g
+from flask import Flask, jsonify, render_template, request, make_response, redirect, session, url_for, g, abort
+from email.message import EmailMessage
 from io import StringIO
 from werkzeug.security import check_password_hash, generate_password_hash
 
@@ -33,9 +37,22 @@ if os.getenv("SESSION_COOKIE_SECURE"):
     app.config["SESSION_COOKIE_SECURE"] = True
 app.permanent_session_lifetime = timedelta(days=int(os.getenv("SESSION_LIFETIME_DAYS", "30")))
 
-DB_NAME = "productivity.db"
+DB_PATH_ENV = "DB_PATH"
+DB_NAME = (os.getenv(DB_PATH_ENV) or "productivity.db").strip() or "productivity.db"
 SHEETY_ENDPOINT_ENV = "SHEETY_ENDPOINT"
 API_AUTH_TOKEN_ENV = "TIME_TRACKER_API_TOKEN"
+ADMIN_EMAILS_ENV = "ADMIN_EMAILS"
+SMTP_HOST_ENV = "SMTP_HOST"
+SMTP_PORT_ENV = "SMTP_PORT"
+SMTP_USER_ENV = "SMTP_USER"
+SMTP_PASSWORD_ENV = "SMTP_PASSWORD"
+SMTP_SENDER_ENV = "SMTP_SENDER"
+SMTP_USE_TLS_ENV = "SMTP_USE_TLS"
+BREVO_API_KEY_ENV = "BREVO_API_KEY"
+EMAIL_MODE_ENV = "EMAIL_MODE"
+LOG_VERIFICATION_CODES_ENV = "LOG_VERIFICATION_CODES"
+VERIFICATION_CODE_TTL_MINUTES = int(os.getenv("VERIFICATION_CODE_TTL_MINUTES", "10"))
+VERIFICATION_MAX_ATTEMPTS = int(os.getenv("VERIFICATION_MAX_ATTEMPTS", "5"))
 SYNC_INTERVAL_SECONDS = int(os.getenv("SYNC_INTERVAL_SECONDS", "300"))
 SYNC_FAIL_COOLDOWN_SECONDS = int(os.getenv("SYNC_FAIL_COOLDOWN_SECONDS", "1800"))
 SPECIAL_TAGS = {"Work", "Necessity", "Soul", "Rest", "Waste"}
@@ -96,6 +113,12 @@ def primary_special_tag(raw: Optional[str]) -> str:
     return tags[0] if tags else "Waste"
 
 def get_db_connection() -> sqlite3.Connection:
+    try:
+        parent = os.path.dirname(DB_NAME)
+        if parent:
+            os.makedirs(parent, exist_ok=True)
+    except Exception:
+        pass
     conn = sqlite3.connect(DB_NAME)
     conn.row_factory = sqlite3.Row
     return conn
@@ -109,7 +132,12 @@ def init_db() -> None:
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 username TEXT UNIQUE NOT NULL,
+                user_id TEXT UNIQUE,
+                name TEXT,
+                email TEXT UNIQUE,
                 password_hash TEXT NOT NULL,
+                role TEXT DEFAULT 'user',
+                is_verified INTEGER DEFAULT 0,
                 created_at TEXT
             )
             """
@@ -148,6 +176,33 @@ def init_db() -> None:
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_logs_user_start ON logs(user_id, start_date, start_time)"
         )
+        user_cols = [row["name"] for row in conn.execute("PRAGMA table_info(users)").fetchall()]
+        if "user_id" not in user_cols:
+            conn.execute("ALTER TABLE users ADD COLUMN user_id TEXT")
+        if "name" not in user_cols:
+            conn.execute("ALTER TABLE users ADD COLUMN name TEXT")
+        if "email" not in user_cols:
+            conn.execute("ALTER TABLE users ADD COLUMN email TEXT")
+        if "role" not in user_cols:
+            conn.execute("ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'user'")
+        if "is_verified" not in user_cols:
+            conn.execute("ALTER TABLE users ADD COLUMN is_verified INTEGER DEFAULT 0")
+            conn.execute("UPDATE users SET is_verified = 1 WHERE is_verified IS NULL")
+        conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_user_id ON users(user_id)")
+        conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email)")
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS email_verifications (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                code_hash TEXT NOT NULL,
+                expires_at TEXT NOT NULL,
+                attempts INTEGER DEFAULT 0,
+                verified_at TEXT,
+                FOREIGN KEY(user_id) REFERENCES users(id)
+            )
+            """
+        )
         conn.commit()
         conn.close()
     except Exception as exc:
@@ -183,13 +238,19 @@ def _token_is_valid(headers: Dict[str, str]) -> bool:
     expected = os.getenv(API_AUTH_TOKEN_ENV)
     if not expected:
         return False
-    provided = headers.get("X-API-Token") or request.args.get("token") or request.cookies.get("tt_token")
+    allow_cookie_token = _get_user_count() <= 1
+    provided = headers.get("X-API-Token") or request.args.get("token")
+    if allow_cookie_token and not provided:
+        provided = request.cookies.get("tt_token")
     return bool(provided and provided == expected)
 
 
 def resolve_request_user_id(headers: Dict[str, str]) -> Optional[int]:
     session_uid = get_current_user_id()
     if session_uid is not None:
+        user = _get_user_by_id(int(session_uid))
+        if not user or not int(_row_value(user, "is_verified") or 0):
+            return None
         return int(session_uid)
 
     if not _token_is_valid(headers):
@@ -200,13 +261,16 @@ def resolve_request_user_id(headers: Dict[str, str]) -> Optional[int]:
 
     if raw_user_id:
         try:
-            return int(raw_user_id)
+            user = _get_user_by_id(int(raw_user_id))
+            if not user or not int(_row_value(user, "is_verified") or 0):
+                return None
+            return int(user["id"])
         except Exception:
             return None
 
     if raw_username:
         user = _get_user_by_username(raw_username)
-        if not user:
+        if not user or not int(_row_value(user, "is_verified") or 0):
             return None
         return int(user["id"])
 
@@ -215,7 +279,9 @@ def resolve_request_user_id(headers: Dict[str, str]) -> Optional[int]:
     count_row = conn.execute("SELECT COUNT(*) AS c FROM users").fetchone()
     conn.close()
     if row and int(count_row["c"]) == 1:
-        return int(row["id"])
+        user = _get_user_by_id(int(row["id"]))
+        if user and int(_row_value(user, "is_verified") or 0):
+            return int(user["id"])
     return None
 
 
@@ -224,12 +290,42 @@ def login_required(fn):
     def wrapper(*args, **kwargs):
         uid = get_current_user_id()
         if uid is not None:
+            user = _get_user_by_id(int(uid))
+            if user and not int(_row_value(user, "is_verified") or 0):
+                session.clear()
+                session["pending_user_id"] = int(uid)
+                if request.path.startswith("/api/"):
+                    return jsonify({"error": "Email not verified"}), 403
+                return redirect(url_for("verify_email"))
             return fn(*args, **kwargs)
         if _get_user_count() == 0:
             return redirect(url_for("register"))
         if request.path.startswith("/api/"):
             return jsonify({"error": "Unauthorized"}), 401
         return redirect(url_for("login", next=_safe_next_url(request.full_path or request.path)))
+
+    return wrapper
+
+
+def admin_required(fn):
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        uid = get_current_user_id()
+        if uid is None:
+            return redirect(url_for("login"))
+        user = _get_user_by_id(int(uid))
+        if not user or not int(_row_value(user, "is_verified") or 0):
+            session.clear()
+            session["pending_user_id"] = int(uid)
+            return redirect(url_for("verify_email"))
+        email = _row_value(user, "email")
+        role = _row_value(user, "role") or "user"
+        is_admin = role == "admin" or _is_admin_email(email)
+        if is_admin and role != "admin":
+            _ensure_admin_role(user)
+        if not is_admin:
+            abort(403)
+        return fn(*args, **kwargs)
 
     return wrapper
 
@@ -248,10 +344,18 @@ def api_or_login_required(fn):
 
 
 def _get_user_by_username(username: str) -> Optional[sqlite3.Row]:
+    value = (username or "").strip()
+    if not value:
+        return None
     conn = get_db_connection()
     row = conn.execute(
-        "SELECT * FROM users WHERE username = ?",
-        (username.strip(),),
+        """
+        SELECT * FROM users
+        WHERE lower(username) = lower(?)
+           OR lower(user_id) = lower(?)
+           OR lower(email) = lower(?)
+        """,
+        (value, value, value),
     ).fetchone()
     conn.close()
     return row
@@ -265,6 +369,352 @@ def _get_user_by_id(user_id: int) -> Optional[sqlite3.Row]:
     ).fetchone()
     conn.close()
     return row
+
+
+def _get_user_by_public_id(public_id: str) -> Optional[sqlite3.Row]:
+    value = (public_id or "").strip()
+    if not value:
+        return None
+    conn = get_db_connection()
+    row = conn.execute(
+        "SELECT * FROM users WHERE lower(user_id) = lower(?)",
+        (value,),
+    ).fetchone()
+    conn.close()
+    return row
+
+
+def _get_user_by_email(email: str) -> Optional[sqlite3.Row]:
+    value = (email or "").strip()
+    if not value:
+        return None
+    conn = get_db_connection()
+    row = conn.execute(
+        "SELECT * FROM users WHERE lower(email) = lower(?)",
+        (value,),
+    ).fetchone()
+    conn.close()
+    return row
+
+
+def _display_name(user: sqlite3.Row) -> str:
+    if not user:
+        return ""
+    return (
+        (user["name"] if "name" in user.keys() else None)
+        or (user["user_id"] if "user_id" in user.keys() else None)
+        or user["username"]
+        or ""
+    )
+
+
+def _row_value(row: Optional[sqlite3.Row], key: str) -> Optional[str]:
+    if not row:
+        return None
+    return row[key] if key in row.keys() else None
+
+
+def _get_admin_emails() -> List[str]:
+    raw = os.getenv(ADMIN_EMAILS_ENV, "")
+    return [email.strip().lower() for email in raw.split(",") if email.strip()]
+
+
+def _is_admin_email(email: Optional[str]) -> bool:
+    if not email:
+        return False
+    return email.strip().lower() in set(_get_admin_emails())
+
+
+def _ensure_admin_role(user: Optional[sqlite3.Row]) -> bool:
+    if not user:
+        return False
+    email = _row_value(user, "email")
+    if not _is_admin_email(email):
+        return False
+    role = _row_value(user, "role") or "user"
+    if role == "admin":
+        return True
+    user_id = _row_value(user, "id")
+    if not user_id:
+        return True
+    conn = get_db_connection()
+    conn.execute("UPDATE users SET role = 'admin' WHERE id = ?", (int(user_id),))
+    conn.commit()
+    conn.close()
+    return True
+
+
+def _send_email(to_email: str, subject: str, body: str, html_body: Optional[str] = None) -> bool:
+    email_mode = (os.getenv(EMAIL_MODE_ENV) or "").strip().lower()
+    brevo_key = (os.getenv(BREVO_API_KEY_ENV) or "").strip()
+
+    if brevo_key and (email_mode in {"", "auto", "brevo", "brevo_api"}):
+        ok = _send_email_via_brevo_api(to_email, subject, body, html_body)
+        if ok:
+            return True
+        if email_mode in {"brevo", "brevo_api"}:
+            return False
+
+    host = (os.getenv(SMTP_HOST_ENV) or "").strip()
+    port = int((os.getenv(SMTP_PORT_ENV, "0") or "0").strip() or 0)
+    user = (os.getenv(SMTP_USER_ENV) or "").strip()
+    password = os.getenv(SMTP_PASSWORD_ENV) or ""
+    sender = ((os.getenv(SMTP_SENDER_ENV) or "").strip() or user)
+    missing: List[str] = []
+    if not host:
+        missing.append(SMTP_HOST_ENV)
+    if not port:
+        missing.append(SMTP_PORT_ENV)
+    if not sender:
+        missing.append(SMTP_SENDER_ENV)
+    if missing:
+        logger.warning(
+            "SMTP not configured (%s); email to %s skipped",
+            ",".join(missing),
+            to_email,
+        )
+        return False
+
+    message = EmailMessage()
+    message["From"] = sender
+    message["To"] = to_email
+    message["Subject"] = subject
+    message.set_content(body)
+    if html_body:
+        message.add_alternative(html_body, subtype="html")
+
+    use_tls = str(os.getenv(SMTP_USE_TLS_ENV, "true")).lower() in {"1", "true", "yes"}
+    try:
+        connect_host = host
+        if host and not re.match(r"^\d+\.\d+\.\d+\.\d+$", host):
+            try:
+                infos = socket.getaddrinfo(host, port, family=socket.AF_INET, type=socket.SOCK_STREAM)
+                if infos:
+                    connect_host = infos[0][4][0]
+            except Exception:
+                connect_host = host
+
+        use_ssl = int(port) == 465
+        if use_ssl:
+            with smtplib.SMTP_SSL(connect_host, port, timeout=10) as smtp:
+                smtp.ehlo()
+                if user and password:
+                    smtp.login(user, password)
+                smtp.send_message(message)
+        else:
+            with smtplib.SMTP(connect_host, port, timeout=10) as smtp:
+                smtp.ehlo()
+                if use_tls:
+                    smtp.starttls()
+                    smtp.ehlo()
+                if user and password:
+                    smtp.login(user, password)
+                smtp.send_message(message)
+        return True
+    except Exception as exc:
+        logger.exception(
+            "Failed to send email via SMTP host=%s port=%s tls=%s sender=%s user_configured=%s to=%s: %s",
+            host,
+            port,
+            use_tls,
+            sender,
+            bool(user),
+            to_email,
+            exc,
+        )
+        return False
+
+
+def _send_email_via_brevo_api(to_email: str, subject: str, body: str, html_body: Optional[str] = None) -> bool:
+    api_key = (os.getenv(BREVO_API_KEY_ENV) or "").strip()
+    sender_email = (os.getenv(SMTP_SENDER_ENV) or os.getenv(SMTP_USER_ENV) or "").strip()
+    if not api_key or not sender_email:
+        return False
+
+    payload = {
+        "sender": {"email": sender_email, "name": "Time Tracker Pro"},
+        "to": [{"email": (to_email or "").strip()}],
+        "subject": subject,
+        "textContent": body,
+    }
+    if html_body:
+        payload["htmlContent"] = html_body
+
+    try:
+        resp = requests.post(
+            "https://api.brevo.com/v3/smtp/email",
+            headers={"api-key": api_key, "content-type": "application/json"},
+            json=payload,
+            timeout=15,
+        )
+        if 200 <= int(resp.status_code) < 300:
+            return True
+        logger.error(
+            "Brevo API email failed status=%s to=%s response=%s",
+            resp.status_code,
+            to_email,
+            (resp.text or "")[:500],
+        )
+        return False
+    except Exception as exc:
+        logger.exception("Brevo API email exception to=%s: %s", to_email, exc)
+        return False
+
+
+def _create_verification_code(user_id: int) -> str:
+    code = f"{secrets.randbelow(1_000_000):06d}"
+    code_hash = generate_password_hash(code)
+    expires_at = (datetime.now(timezone.utc) + timedelta(minutes=VERIFICATION_CODE_TTL_MINUTES)).isoformat()
+
+    conn = get_db_connection()
+    conn.execute("DELETE FROM email_verifications WHERE user_id = ?", (int(user_id),))
+    conn.execute(
+        """
+        INSERT INTO email_verifications (user_id, code_hash, expires_at, attempts)
+        VALUES (?, ?, ?, 0)
+        """,
+        (int(user_id), code_hash, expires_at),
+    )
+    conn.commit()
+    conn.close()
+    return code
+
+
+def _has_active_verification(user_id: int) -> bool:
+    conn = get_db_connection()
+    row = conn.execute(
+        "SELECT expires_at, verified_at FROM email_verifications WHERE user_id = ? ORDER BY id DESC LIMIT 1",
+        (int(user_id),),
+    ).fetchone()
+    conn.close()
+    if not row:
+        return False
+    if row["verified_at"]:
+        return False
+    try:
+        expires_at = datetime.fromisoformat(row["expires_at"])
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+    except Exception:
+        return False
+    return datetime.now(timezone.utc) <= expires_at
+
+
+def _send_verification_email(user: sqlite3.Row) -> bool:
+    if not user or not _row_value(user, "email"):
+        return False
+    code = _create_verification_code(int(user["id"]))
+    greeting = (
+        _row_value(user, "name")
+        or _row_value(user, "user_id")
+        or _row_value(user, "username")
+        or "there"
+    )
+    subject = "Verify your Time Tracker Pro account"
+    body = (
+        f"Hi {greeting},\n\n"
+        f"Your verification code is: {code}\n\n"
+        "Enter this code on the verification screen to activate your account.\n\n"
+        "If you did not request this, you can ignore this email."
+    )
+    html_body = f"""
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="light">
+    <meta name="supported-color-schemes" content="light">
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background: #F5EDE1;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="background: #F5EDE1; padding: 20px 10px;">
+        <tr>
+            <td align="center">
+                <table width="600" cellpadding="0" cellspacing="0" style="max-width: 600px; width: 100%; background: #FFFFFF; border: 1px solid #D4C5B0; border-radius: 16px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); overflow: hidden;">
+                    <tr>
+                        <td style="background: #1F2937; padding: 24px 20px; text-align: center;">
+                            <h1 style="margin: 0; color: #FCD34D; font-size: 24px; font-weight: 700; letter-spacing: -0.3px;">Time Tracker Pro</h1>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 32px 24px;">
+                            <h2 style="margin: 0 0 16px 0; color: #1F2937; font-size: 20px; font-weight: 600;">Welcome, {greeting}!</h2>
+                            <p style="margin: 0 0 24px 0; color: #374151; font-size: 15px; line-height: 1.5;">Thank you for joining Time Tracker Pro. To activate your account, please use the verification code below:</p>
+                            <div style="background: #1F2937; border-radius: 12px; padding: 24px 20px; text-align: center; margin: 24px 0;">
+                                <div style="color: #D1D5DB; font-size: 11px; text-transform: uppercase; letter-spacing: 1.2px; margin-bottom: 10px; font-weight: 600;">Your Verification Code</div>
+                                <div style="color: #FCD34D; font-size: 36px; font-weight: 700; letter-spacing: 6px; font-family: 'Courier New', Courier, monospace;">{code}</div>
+                            </div>
+                            <p style="margin: 24px 0 0 0; color: #4B5563; font-size: 14px; line-height: 1.5;">Enter this code on the verification screen to complete your registration. This code will expire in 10 minutes.</p>
+                            <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #E5E7EB;">
+                                <p style="margin: 0; color: #6B7280; font-size: 13px; line-height: 1.4;">If you didn't request this verification, you can safely ignore this email.</p>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="background: #F9FAFB; padding: 20px 24px; text-align: center; border-top: 1px solid #E5E7EB;">
+                            <p style="margin: 0; color: #6B7280; font-size: 12px;">&copy; 2026 Time Tracker Pro. All rights reserved.</p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>
+    """
+    ok = _send_email(_row_value(user, "email") or "", subject, body, html_body)
+    if not ok and str(os.getenv(LOG_VERIFICATION_CODES_ENV, "")).lower() in {"1", "true", "yes"}:
+        logger.warning(
+            "Verification code (email send failed) user_id=%s email=%s code=%s",
+            _row_value(user, "id"),
+            _row_value(user, "email"),
+            code,
+        )
+    return ok
+
+
+def _verify_email_code(user_id: int, code: str) -> Tuple[bool, str]:
+    conn = get_db_connection()
+    row = conn.execute(
+        "SELECT * FROM email_verifications WHERE user_id = ? ORDER BY id DESC LIMIT 1",
+        (int(user_id),),
+    ).fetchone()
+    if not row:
+        conn.close()
+        return False, "No verification request found. Please resend the code."
+
+    attempts = int(row["attempts"] or 0)
+    if attempts >= VERIFICATION_MAX_ATTEMPTS:
+        conn.close()
+        return False, "Too many attempts. Please resend a new code."
+
+    try:
+        expires_at = datetime.fromisoformat(row["expires_at"])
+    except Exception:
+        expires_at = datetime.now(timezone.utc) - timedelta(minutes=1)
+
+    if datetime.now(timezone.utc) > expires_at:
+        conn.close()
+        return False, "Verification code expired. Please resend."
+
+    if not check_password_hash(row["code_hash"], (code or "").strip()):
+        conn.execute(
+            "UPDATE email_verifications SET attempts = ? WHERE id = ?",
+            (attempts + 1, int(row["id"])),
+        )
+        conn.commit()
+        conn.close()
+        return False, "Invalid verification code."
+
+    verified_at = datetime.now(timezone.utc).isoformat()
+    conn.execute("UPDATE users SET is_verified = 1 WHERE id = ?", (int(user_id),))
+    conn.execute(
+        "UPDATE email_verifications SET verified_at = ? WHERE id = ?",
+        (verified_at, int(row["id"])),
+    )
+    conn.commit()
+    conn.close()
+    return True, "Your account is now verified."
 
 
 def get_user_settings(user_id: int) -> Dict[str, Optional[str]]:
@@ -429,9 +879,15 @@ def sync_cloud_data(user_id: int, force: bool = False) -> None:
         logger.info("Cloud sync disabled by env; skipping (force=%s)", force)
         return
     settings = get_user_settings(int(user_id))
-    url = (settings.get("sheety_endpoint") or "").strip() or os.getenv(SHEETY_ENDPOINT_ENV)
+    user_url = (settings.get("sheety_endpoint") or "").strip()
+    env_url = (os.getenv(SHEETY_ENDPOINT_ENV) or "").strip()
+    allow_env_fallback = _get_user_count() <= 1
+    url = user_url or (env_url if allow_env_fallback else "")
     if not url:
-        logger.info("SHEETY_ENDPOINT not configured; skipping cloud sync")
+        if allow_env_fallback:
+            logger.info("SHEETY_ENDPOINT not configured; skipping cloud sync")
+        else:
+            logger.info("Sheety endpoint not set for user_id=%s; multi-user mode requires per-user settings", int(user_id))
         return
 
     headers: Dict[str, str] = {}
@@ -461,14 +917,50 @@ def sync_cloud_data(user_id: int, force: bool = False) -> None:
         if "id" in cloud_df.columns:
             cloud_df = cloud_df.sort_values("id")
 
+        def _row_text(row: pd.Series, keys: Iterable[str]) -> str:
+            for key in keys:
+                value = row.get(key)
+                if value is None or (isinstance(value, float) and pd.isna(value)):
+                    continue
+                text = str(value).strip()
+                if text and text.lower() != "nan":
+                    return text
+            return ""
+
         parser = TimeLogParser()
         parsed_rows: List[Dict[str, Any]] = []
         previous_end: Optional[datetime] = None
 
         for _, row in cloud_df.iterrows():
-            col_a = str(row.get("colA", "") or "")
-            col_b = str(row.get("colB", "") or str(row.get("rawTask", "")))
-            client_now = row.get("loggedTime")
+            col_a = _row_text(
+                row,
+                (
+                    "colA",
+                    "startTime",
+                    "rawStart",
+                    "start_time",
+                    "start time",
+                ),
+            )
+            col_b = _row_text(
+                row,
+                (
+                    "colB",
+                    "taskDetails",
+                    "rawTask",
+                    "task",
+                    "task_details",
+                    "task details",
+                ),
+            )
+            client_now = _row_text(
+                row,
+                (
+                    "loggedTime",
+                    "logged_time",
+                    "logged time",
+                ),
+            )
 
             parsed = parser.parse_row(col_a, col_b, client_now, previous_end)
             parsed_rows.append(parsed)
@@ -690,31 +1182,49 @@ def login():
 
     next_url = _safe_next_url(request.args.get("next"))
     error: Optional[str] = None
+    show_verify = False
 
     if request.method == "POST":
-        username = (request.form.get("username") or "").strip()
+        identifier = (request.form.get("identifier") or request.form.get("username") or "").strip()
         password = request.form.get("password") or ""
         remember = bool(request.form.get("remember"))
         next_url = _safe_next_url(request.form.get("next")) or next_url
 
-        if not username or not password:
-            error = "Username and password are required."
+        if not identifier or not password:
+            error = "Username, email, or user ID and password are required."
         else:
-            user = _get_user_by_username(username)
-            if not user or not check_password_hash(user["password_hash"], password):
-                error = "Invalid username or password."
+            user = _get_user_by_username(identifier)
+            if not user or not check_password_hash(_row_value(user, "password_hash"), password):
+                error = "Invalid credentials."
+            elif not int(_row_value(user, "is_verified") or 0):
+                error = "Please verify your email before logging in."
+                session["pending_user_id"] = int(_row_value(user, "id"))
+                session["pending_remember"] = remember
+                if _send_verification_email(user):
+                    session["verification_success"] = "Verification code sent."
+                else:
+                    session["verification_error"] = "Unable to send email. Check SMTP settings."
+                return redirect(url_for("verify_email", next=next_url or ""))
             else:
                 session.clear()
-                session["user_id"] = int(user["id"])
+                session["user_id"] = int(_row_value(user, "id"))
                 session.permanent = remember
 
-                settings = get_user_settings(int(user["id"]))
-                if not (settings.get("sheety_endpoint") or os.getenv(SHEETY_ENDPOINT_ENV)):
-                    return redirect(url_for("settings"))
+                settings = get_user_settings(int(_row_value(user, "id")))
+                multi_user = _get_user_count() > 1
+                if multi_user:
+                    if not settings.get("sheety_endpoint"):
+                        return redirect(url_for("settings"))
+                else:
+                    if not (settings.get("sheety_endpoint") or os.getenv(SHEETY_ENDPOINT_ENV)):
+                        return redirect(url_for("settings"))
 
                 return redirect(next_url or url_for("dashboard"))
 
-    return render_template("login.html", error=error, next=next_url or "")
+    if request.args.get("verify"):
+        show_verify = True
+
+    return render_template("login.html", error=error, next=next_url or "", show_verify=show_verify)
 
 
 @app.route("/register", methods=["GET", "POST"])
@@ -725,22 +1235,32 @@ def register():
     error: Optional[str] = None
 
     if request.method == "POST":
-        username = (request.form.get("username") or "").strip()
+        name = (request.form.get("name") or "").strip()
+        email = (request.form.get("email") or "").strip().lower()
+        public_user_id = (request.form.get("user_id") or "").strip()
         password = request.form.get("password") or ""
         remember = bool(request.form.get("remember"))
 
-        if not username or not password:
-            error = "Username and password are required."
-        elif _get_user_by_username(username):
-            error = "Username already exists."
+        if not name or not email or not public_user_id or not password:
+            error = "Name, email, user ID, and password are required."
+        elif "@" not in email or "." not in email:
+            error = "Please provide a valid email address."
+        elif _get_user_by_public_id(public_user_id) or _get_user_by_username(public_user_id):
+            error = "That user ID is already taken."
+        elif _get_user_by_email(email):
+            error = "An account with that email already exists."
         else:
             created_at = datetime.now(timezone.utc).isoformat()
             password_hash = generate_password_hash(password)
+            role = "admin" if _is_admin_email(email) else "user"
             conn = get_db_connection()
             existing_users = conn.execute("SELECT COUNT(*) AS c FROM users").fetchone()["c"]
             cur = conn.execute(
-                "INSERT INTO users (username, password_hash, created_at) VALUES (?, ?, ?)",
-                (username, password_hash, created_at),
+                """
+                INSERT INTO users (username, user_id, name, email, password_hash, role, is_verified, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, 0, ?)
+                """,
+                (public_user_id, public_user_id, name, email, password_hash, role, created_at),
             )
             new_user_id = int(cur.lastrowid)
 
@@ -750,11 +1270,13 @@ def register():
             conn.commit()
             conn.close()
 
+            user = _get_user_by_id(new_user_id)
+            _send_verification_email(user)
             session.clear()
-            session["user_id"] = new_user_id
-            session.permanent = remember
+            session["pending_user_id"] = new_user_id
+            session["pending_remember"] = remember
 
-            return redirect(url_for("settings"))
+            return redirect(url_for("verify_email"))
 
     return render_template("register.html", error=error)
 
@@ -762,7 +1284,185 @@ def register():
 @app.route("/logout")
 def logout():
     session.clear()
-    return redirect(url_for("login"))
+    resp = redirect(url_for("login"))
+    try:
+        resp.set_cookie("tt_token", "", expires=0)
+    except Exception:
+        pass
+    return resp
+
+
+@app.route("/verify-email", methods=["GET", "POST"])
+def verify_email():
+    pending_id = session.get("pending_user_id")
+    if not pending_id:
+        return redirect(url_for("login"))
+    user = _get_user_by_id(int(pending_id))
+    if not user:
+        session.pop("pending_user_id", None)
+        return redirect(url_for("register"))
+
+    error: Optional[str] = session.pop("verification_error", None)
+    success: Optional[str] = session.pop("verification_success", None)
+
+    if request.method == "POST":
+        if request.form.get("action") == "resend":
+            if _send_verification_email(user):
+                success = "Verification code resent."
+            else:
+                error = "Unable to send email. Check SMTP settings."
+        else:
+            code = (request.form.get("code") or "").strip()
+            if not code:
+                error = "Please enter the verification code."
+            else:
+                ok, message = _verify_email_code(int(user["id"]), code)
+                if ok:
+                    session.pop("pending_user_id", None)
+                    remember = bool(session.pop("pending_remember", False))
+                    session["user_id"] = int(user["id"])
+                    session.permanent = remember
+                    return redirect(url_for("settings"))
+                error = message
+    elif not _has_active_verification(int(user["id"])):
+        if _send_verification_email(user):
+            success = "Verification code sent."
+        else:
+            error = "Unable to send email. Check SMTP settings."
+
+    return render_template(
+        "verify_email.html",
+        error=error,
+        success=success,
+        email=_row_value(user, "email"),
+        name=_display_name(user),
+    )
+
+
+@app.route("/admin/users")
+@admin_required
+def admin_users():
+    admin_row = _get_user_by_id(int(get_current_user_id() or 0))
+    current_user = {
+        "id": int(admin_row["id"]) if admin_row else 0,
+        "display_name": _display_name(admin_row),
+        "role": (_row_value(admin_row, "role") if admin_row else "admin"),
+    }
+    conn = get_db_connection()
+    users = conn.execute(
+        """
+        SELECT id, name, user_id, email, role, is_verified, created_at
+        FROM users
+        ORDER BY created_at DESC
+        """
+    ).fetchall()
+    conn.close()
+    return render_template(
+        "admin_users.html",
+        users=users,
+        current_user=current_user,
+        error=request.args.get("error"),
+        success=request.args.get("success"),
+    )
+
+
+@app.route("/admin/delete-user", methods=["POST"])
+@admin_required
+def admin_delete_user():
+    target_id = (request.form.get("user_id") or "").strip()
+    message = (request.form.get("message") or "").strip()
+    admin_id = int(get_current_user_id() or 0)
+
+    if not target_id:
+        return redirect(url_for("admin_users", error="Missing user selection."))
+    try:
+        target_id_int = int(target_id)
+    except Exception:
+        return redirect(url_for("admin_users", error="Invalid user id."))
+
+    if target_id_int == admin_id:
+        return redirect(url_for("admin_users", error="You cannot delete your own account."))
+
+    if not message:
+        return redirect(url_for("admin_users", error="Please include a message to the user."))
+
+    user = _get_user_by_id(target_id_int)
+    if not user:
+        return redirect(url_for("admin_users", error="User not found."))
+    if (_row_value(user, "role") or "user") == "admin":
+        return redirect(url_for("admin_users", error="You cannot delete another admin."))
+
+    conn = get_db_connection()
+    conn.execute("DELETE FROM logs WHERE user_id = ?", (target_id_int,))
+    conn.execute("DELETE FROM user_settings WHERE user_id = ?", (target_id_int,))
+    conn.execute("DELETE FROM email_verifications WHERE user_id = ?", (target_id_int,))
+    conn.execute("DELETE FROM users WHERE id = ?", (target_id_int,))
+    conn.commit()
+    conn.close()
+
+    greeting = _display_name(user) or "there"
+    subject = "Your Time Tracker Pro account was removed"
+    body = (
+        f"Hi {greeting},\n\n"
+        "Your Time Tracker Pro account has been removed by an administrator.\n\n"
+        "Message from admin:\n"
+        f"{message}\n\n"
+        "If you believe this is a mistake, please reply to this email."
+    )
+    html_body = f"""
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="light">
+    <meta name="supported-color-schemes" content="light">
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background: #F5EDE1;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="background: #F5EDE1; padding: 20px 10px;">
+        <tr>
+            <td align="center">
+                <table width="600" cellpadding="0" cellspacing="0" style="max-width: 600px; width: 100%; background: #FFFFFF; border: 1px solid #D4C5B0; border-radius: 16px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); overflow: hidden;">
+                    <tr>
+                        <td style="background: #1F2937; padding: 24px 20px; text-align: center;">
+                            <h1 style="margin: 0; color: #FCD34D; font-size: 24px; font-weight: 700; letter-spacing: -0.3px;">Time Tracker Pro</h1>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 32px 24px;">
+                            <h2 style="margin: 0 0 16px 0; color: #1F2937; font-size: 20px; font-weight: 600;">Account Removal Notice</h2>
+                            <p style="margin: 0 0 16px 0; color: #374151; font-size: 15px; line-height: 1.5;">Hi {greeting},</p>
+                            <p style="margin: 0 0 24px 0; color: #374151; font-size: 15px; line-height: 1.5;">Your Time Tracker Pro account has been removed by an administrator.</p>
+                            <div style="background: #FEF3C7; border-left: 4px solid #D97706; border-radius: 8px; padding: 16px; margin: 24px 0;">
+                                <div style="color: #92400E; font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 8px; font-weight: 600;">Message from Administrator</div>
+                                <p style="margin: 0; color: #1F2937; font-size: 14px; line-height: 1.5; white-space: pre-wrap;">{message}</p>
+                            </div>
+                            <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #E5E7EB;">
+                                <p style="margin: 0; color: #4B5563; font-size: 14px; line-height: 1.5;">If you believe this is a mistake, please reply to this email to contact support.</p>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="background: #F9FAFB; padding: 20px 24px; text-align: center; border-top: 1px solid #E5E7EB;">
+                            <p style="margin: 0; color: #6B7280; font-size: 12px;">&copy; 2026 Time Tracker Pro. All rights reserved.</p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>
+    """
+    email_sent = (
+        _send_email(_row_value(user, "email"), subject, body, html_body)
+        if _row_value(user, "email")
+        else False
+    )
+    if not email_sent:
+        return redirect(url_for("admin_users", success="User deleted. Email failed to send."))
+
+    return redirect(url_for("admin_users", success="User deleted and notified."))
 
 
 @app.route("/settings", methods=["GET", "POST"])
@@ -778,12 +1478,26 @@ def settings():
         return redirect(url_for("dashboard"))
 
     user_row = _get_user_by_id(user_id)
-    current_user = {"id": user_id, "username": (user_row["username"] if user_row else "")}
+    current_user = {
+        "id": user_id,
+        "display_name": _display_name(user_row),
+        "role": (_row_value(user_row, "role") if user_row else "user"),
+    }
+    is_admin = bool(
+        user_row
+        and (
+            (_row_value(user_row, "role") or "user") == "admin"
+            or _is_admin_email(_row_value(user_row, "email"))
+        )
+    )
+    allow_env_fallback = _get_user_count() <= 1
+    env_sheety = (os.getenv(SHEETY_ENDPOINT_ENV) or "").strip() if allow_env_fallback else ""
     return render_template(
         "settings.html",
         settings=current,
         current_user=current_user,
-        env_sheety=os.getenv(SHEETY_ENDPOINT_ENV, ""),
+        env_sheety=env_sheety,
+        is_admin=is_admin,
     )
 
 
@@ -860,7 +1574,19 @@ def dashboard():
         period_label = selected_date.strftime("%B %Y")
 
     user_row = _get_user_by_id(user_id)
-    current_user = {"id": user_id, "username": (user_row["username"] if user_row else "")}
+    is_admin = bool(
+        user_row
+        and (
+            (_row_value(user_row, "role") or "user") == "admin"
+            or _is_admin_email(_row_value(user_row, "email"))
+        )
+    )
+    current_user = {
+        "id": user_id,
+        "display_name": _display_name(user_row),
+        "role": (_row_value(user_row, "role") if user_row else "user"),
+        "is_admin": is_admin,
+    }
 
     resp = make_response(render_template(
         "dashboard.html",
@@ -874,9 +1600,10 @@ def dashboard():
         start_date=start_date,
         end_date=end_date,
         current_user=current_user,
+        is_admin=is_admin,
     ))
     expected = os.getenv(API_AUTH_TOKEN_ENV)
-    if expected:
+    if expected and _get_user_count() <= 1:
         try:
             resp.set_cookie("tt_token", expected, httponly=True, samesite="Lax")
         except Exception:
@@ -889,8 +1616,19 @@ def dashboard():
 def graphs():
     user_id = int(get_current_user_id() or 0)
     user_row = _get_user_by_id(user_id)
-    current_user = {"id": user_id, "username": (user_row["username"] if user_row else "")}
-    return render_template("graphs.html", current_user=current_user)
+    current_user = {
+        "id": user_id,
+        "display_name": _display_name(user_row),
+        "role": (_row_value(user_row, "role") if user_row else "user"),
+    }
+    is_admin = bool(
+        user_row
+        and (
+            (_row_value(user_row, "role") or "user") == "admin"
+            or _is_admin_email(_row_value(user_row, "email"))
+        )
+    )
+    return render_template("graphs.html", current_user=current_user, is_admin=is_admin)
 
 
 @app.route("/api/graph-data")
@@ -924,6 +1662,12 @@ def graph_data():
 
     if "primary_tag" not in df.columns:
         df["primary_tag"] = df["tag"].apply(primary_special_tag)
+
+    min_complete_minutes = 10 * 60
+    latest_total = df.loc[df["date"] == end_date, "duration"].sum()
+    if latest_total < min_complete_minutes:
+        end_date = end_date - timedelta(days=1)
+        start_date = end_date - timedelta(days=days - 1)
 
     df = df[(df["date"] >= start_date) & (df["date"] <= end_date)]
     if df.empty:
@@ -1198,6 +1942,8 @@ def download_db():
     """
     try:
         headers = dict(request.headers)
+        if _get_user_count() > 1:
+            return "Disabled in multi-user mode", 403
         if not _token_is_valid(headers):
             return "Unauthorized", 401
         resolved_user_id = resolve_request_user_id(headers)
@@ -1219,8 +1965,9 @@ def sync_status():
             user_id = resolve_request_user_id(headers)
         if user_id is not None:
             settings = get_user_settings(int(user_id))
+            allow_env_fallback = _get_user_count() <= 1
             status = {
-                "sheety_configured": bool(settings.get("sheety_endpoint") or os.getenv(SHEETY_ENDPOINT_ENV)),
+                "sheety_configured": bool((settings.get("sheety_endpoint") or "").strip() or ((os.getenv(SHEETY_ENDPOINT_ENV) or "").strip() if allow_env_fallback else "")),
                 "disable_cloud_sync": bool(os.getenv("DISABLE_CLOUD_SYNC")),
                 "last_sync": _LAST_SYNC_TS_BY_USER.get(int(user_id)).isoformat() if _LAST_SYNC_TS_BY_USER.get(int(user_id)) else None,
                 "last_sync_fail": _LAST_SYNC_FAIL_TS_BY_USER.get(int(user_id)).isoformat() if _LAST_SYNC_FAIL_TS_BY_USER.get(int(user_id)) else None,
