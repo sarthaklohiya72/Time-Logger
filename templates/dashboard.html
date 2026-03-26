@@ -279,6 +279,7 @@
                             <div class="px-3 py-2 rounded-full bg-white/80 border border-[rgba(148,126,86,0.35)] text-xs font-semibold text-gray-800">
                                 {{ current_user.username }}
                             </div>
+                            <a href="{{ url_for('graphs') }}" class="px-3 py-2 rounded-full bg-white/80 border border-[rgba(148,126,86,0.35)] text-xs font-semibold text-gray-700 hover:bg-[#F7F1E6] transition-all">Graphs</a>
                             <a href="{{ url_for('settings') }}" class="px-3 py-2 rounded-full bg-white/80 border border-[rgba(148,126,86,0.35)] text-xs font-semibold text-gray-700 hover:bg-[#F7F1E6] transition-all">Settings</a>
                             <a href="{{ url_for('logout') }}" class="px-3 py-2 rounded-full bg-gray-900 text-amber-300 text-xs font-semibold shadow-lg">Logout</a>
                         </div>
@@ -417,7 +418,7 @@
                                 </div>
                                 <div class="text-lg md:text-xl text-amber-400/70">◆</div>
                             </div>
-                            <div class="text-2xl md:text-3xl font-light text-gray-900 mb-1"><span class="js-hover-hours" data-hours="{{ matrix.q1.hours }}">{{ matrix.q1.hours }}h</span></div>
+                            <div class="text-2xl md:text-3xl font-light text-gray-900 mb-1"><span class="js-hover-hours matrix-hours" data-matrix-key="q1" data-total-hours="{{ matrix.q1.hours }}" data-hours="{{ matrix.q1.hours }}">{{ matrix.q1.hours }}h</span></div>
                             <div class="text-[10px] md:text-xs font-medium text-amber-700/70">{{ matrix.q1.pct }}%</div>
                         </div>
                     </div>
@@ -433,7 +434,7 @@
                                 </div>
                                 <div class="text-lg md:text-xl text-green-400/80">★</div>
                             </div>
-                            <div class="text-2xl md:text-3xl font-light text-gray-900 mb-1"><span class="js-hover-hours" data-hours="{{ matrix.q2.hours }}">{{ matrix.q2.hours }}h</span></div>
+                            <div class="text-2xl md:text-3xl font-light text-gray-900 mb-1"><span class="js-hover-hours matrix-hours" data-matrix-key="q2" data-total-hours="{{ matrix.q2.hours }}" data-hours="{{ matrix.q2.hours }}">{{ matrix.q2.hours }}h</span></div>
                             <div class="text-[10px] md:text-xs font-medium text-green-700/80">{{ matrix.q2.pct }}%</div>
                         </div>
                     </div>
@@ -449,7 +450,7 @@
                                 </div>
                                 <div class="text-lg md:text-xl text-slate-400/70">⛓</div>
                             </div>
-                            <div class="text-2xl md:text-3xl font-light text-slate-700 mb-1"><span class="js-hover-hours" data-hours="{{ matrix.q3.hours }}">{{ matrix.q3.hours }}h</span></div>
+                            <div class="text-2xl md:text-3xl font-light text-slate-700 mb-1"><span class="js-hover-hours matrix-hours" data-matrix-key="q3" data-total-hours="{{ matrix.q3.hours }}" data-hours="{{ matrix.q3.hours }}">{{ matrix.q3.hours }}h</span></div>
                             <div class="text-[10px] md:text-xs font-medium text-slate-500/70">{{ matrix.q3.pct }}%</div>
                         </div>
                     </div>
@@ -465,7 +466,7 @@
                                 </div>
                                 <div class="text-lg md:text-xl text-red-300/70">×</div>
                             </div>
-                            <div class="text-2xl md:text-3xl font-light text-gray-900 mb-1"><span class="js-hover-hours" data-hours="{{ matrix.q4.hours }}">{{ matrix.q4.hours }}h</span></div>
+                            <div class="text-2xl md:text-3xl font-light text-gray-900 mb-1"><span class="js-hover-hours matrix-hours" data-matrix-key="q4" data-total-hours="{{ matrix.q4.hours }}" data-hours="{{ matrix.q4.hours }}">{{ matrix.q4.hours }}h</span></div>
                             <div class="text-[10px] md:text-xs font-medium text-red-600/70">{{ matrix.q4.pct }}%</div>
                         </div>
                     </div>
@@ -483,7 +484,7 @@
                                 </div>
                                 <div class="text-lg md:text-xl text-blue-400/70">●</div>
                             </div>
-                            <div class="text-2xl md:text-3xl font-light text-gray-900 mb-1"><span class="js-hover-hours" data-hours="{{ matrix.important.hours }}">{{ matrix.important.hours }}h</span></div>
+                            <div class="text-2xl md:text-3xl font-light text-gray-900 mb-1"><span class="js-hover-hours matrix-hours" data-matrix-key="important" data-total-hours="{{ matrix.important.hours }}" data-hours="{{ matrix.important.hours }}">{{ matrix.important.hours }}h</span></div>
                             <div class="text-[10px] md:text-xs font-medium text-blue-700/70">{{ matrix.important.pct }}%</div>
                         </div>
                     </div>
@@ -499,7 +500,7 @@
                                 </div>
                                 <div class="text-lg md:text-xl text-neutral-300/70">○</div>
                             </div>
-                            <div class="text-2xl md:text-3xl font-light text-neutral-600 mb-1"><span class="js-hover-hours" data-hours="{{ matrix.not_important.hours }}">{{ matrix.not_important.hours }}h</span></div>
+                            <div class="text-2xl md:text-3xl font-light text-neutral-600 mb-1"><span class="js-hover-hours matrix-hours" data-matrix-key="not_important" data-total-hours="{{ matrix.not_important.hours }}" data-hours="{{ matrix.not_important.hours }}">{{ matrix.not_important.hours }}h</span></div>
                             <div class="text-[10px] md:text-xs font-medium text-neutral-400/70">{{ matrix.not_important.pct }}%</div>
                         </div>
                     </div>
@@ -515,7 +516,7 @@
                                 </div>
                                 <div class="text-lg md:text-xl text-orange-400/70">⚡</div>
                             </div>
-                            <div class="text-2xl md:text-3xl font-light text-gray-900 mb-1"><span class="js-hover-hours" data-hours="{{ matrix.urgent.hours }}">{{ matrix.urgent.hours }}h</span></div>
+                            <div class="text-2xl md:text-3xl font-light text-gray-900 mb-1"><span class="js-hover-hours matrix-hours" data-matrix-key="urgent" data-total-hours="{{ matrix.urgent.hours }}" data-hours="{{ matrix.urgent.hours }}">{{ matrix.urgent.hours }}h</span></div>
                             <div class="text-[10px] md:text-xs font-medium text-orange-700/70">{{ matrix.urgent.pct }}%</div>
                         </div>
                     </div>
@@ -531,24 +532,24 @@
                                 </div>
                                 <div class="text-lg md:text-xl text-teal-400/70">◇</div>
                             </div>
-                            <div class="text-2xl md:text-3xl font-light text-gray-900 mb-1"><span class="js-hover-hours" data-hours="{{ matrix.not_urgent.hours }}">{{ matrix.not_urgent.hours }}h</span></div>
+                            <div class="text-2xl md:text-3xl font-light text-gray-900 mb-1"><span class="js-hover-hours matrix-hours" data-matrix-key="not_urgent" data-total-hours="{{ matrix.not_urgent.hours }}" data-hours="{{ matrix.not_urgent.hours }}">{{ matrix.not_urgent.hours }}h</span></div>
                             <div class="text-[10px] md:text-xs font-medium text-teal-700/70">{{ matrix.not_urgent.pct }}%</div>
                         </div>
                     </div>
 
                     <!-- Total - Neutral Grey/Beige (pure fact, no emotion) -->
-                    <div class="matrix-card luxury-card rounded-xl md:rounded-2xl p-3 md:p-5 bg-gradient-to-br from-stone-100/50 to-neutral-50/30 border-stone-200/40 hover:shadow-lg transition-all duration-300 relative overflow-hidden col-span-2 md:col-span-1">
+                    <div class="matrix-card luxury-card rounded-xl md:rounded-2xl p-3 md:p-5 bg-gradient-to-br from-stone-100/50 to-neutral-50/30 border-stone-200/40 hover:shadow-lg transition-all duration-300 relative overflow-hidden col-span-2 md:col-span-1 cursor-pointer" id="matrixTotalCard" onclick="window.toggleMatrixMode()">
                         <div class="water-fill" style="height: 100%; background: linear-gradient(180deg, rgba(168, 162, 158, 0.45) 0%, rgba(120, 113, 108, 0.35) 100%);"></div>
                         <div class="relative z-10">
                             <div class="flex justify-between items-start mb-2 md:mb-4">
                                 <div>
-                                    <h4 class="text-stone-600 font-semibold text-sm md:text-base mb-0.5">Total</h4>
-                                    <p class="text-[8px] md:text-[10px] text-stone-500/80 font-medium uppercase tracking-wider">All Time Logged</p>
+                                    <h4 class="text-stone-600 font-semibold text-sm md:text-base mb-0.5" id="matrixTotalTitle">Total</h4>
+                                    <p class="text-[8px] md:text-[10px] text-stone-500/80 font-medium uppercase tracking-wider" id="matrixTotalSubtitle">All Time Logged</p>
                                 </div>
                                 <div class="text-lg md:text-xl text-stone-400/70">∑</div>
                             </div>
-                            <div class="text-2xl md:text-3xl font-light text-stone-700 mb-1"><span class="js-hover-hours" data-hours="{{ matrix.total_hours }}">{{ matrix.total_hours }}h</span></div>
-                            <div class="text-[10px] md:text-xs font-medium text-stone-500/70">100%</div>
+                            <div class="text-2xl md:text-3xl font-light text-stone-700 mb-1"><span class="js-hover-hours matrix-hours" data-matrix-key="total" data-total-hours="{{ matrix.total_hours }}" data-hours="{{ matrix.total_hours }}">{{ matrix.total_hours }}h</span></div>
+                            <div class="text-[10px] md:text-xs font-medium text-stone-500/70" id="matrixTotalPct">100%</div>
                         </div>
                     </div>
                 </div>
@@ -605,6 +606,12 @@
                     </svg>
                     <span class="text-[10px] font-medium">Tags</span>
                 </button>
+                <button id="navGraphs" class="flex flex-col items-center gap-1 px-3 py-1 rounded-xl text-gray-600">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.6" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 18V6m0 12h16M8 14l3-3 3 2 4-5" />
+                    </svg>
+                    <span class="text-[10px] font-medium">Graphs</span>
+                </button>
             </div>
         </div>
     </nav>
@@ -633,6 +640,8 @@
         // Global variables
         window.currentDate = '{{ selected_date }}';
         window.currentPeriod = '{{ period }}';
+        window.periodStart = '{{ start_date }}';
+        window.periodEnd = '{{ end_date }}';
 
         // Define functions globally
         window.changePeriod = function(period) {
@@ -715,6 +724,60 @@
         window.viewMatrixQuadrant = function(quadrant, name) {
             console.log('Matrix quadrant clicked:', quadrant, name);
             window.applyFilter(quadrant, name);
+        };
+
+        window.getPeriodDays = function() {
+            try {
+                const start = new Date(window.periodStart);
+                const end = new Date(window.periodEnd);
+                if (Number.isNaN(start.valueOf()) || Number.isNaN(end.valueOf())) return 1;
+                const diff = Math.round((end - start) / (1000 * 60 * 60 * 24));
+                return Math.max(1, diff + 1);
+            } catch (e) {
+                return 1;
+            }
+        };
+
+        window.updateMatrixDisplay = function() {
+            const period = window.currentPeriod || 'day';
+            const isMultiDay = period === 'week' || period === 'month';
+            const mode = isMultiDay ? (window.matrixMode || 'avg') : 'total';
+            const days = isMultiDay ? window.getPeriodDays() : 1;
+            const useAverage = mode === 'avg' && days > 0;
+            const formatHours = (h) => {
+                const val = Number(h);
+                return Number.isFinite(val) ? val.toFixed(1) : '0.0';
+            };
+
+            document.querySelectorAll('.matrix-hours').forEach(el => {
+                const total = Number(el.getAttribute('data-total-hours') || 0);
+                const display = useAverage ? (total / days) : total;
+                el.setAttribute('data-hours', display);
+                el.textContent = `${formatHours(display)}h`;
+            });
+
+            const titleEl = document.getElementById('matrixTotalTitle');
+            const subtitleEl = document.getElementById('matrixTotalSubtitle');
+            if (titleEl && subtitleEl) {
+                if (useAverage && isMultiDay) {
+                    titleEl.textContent = 'Average';
+                    subtitleEl.textContent = 'Per Day';
+                } else if (isMultiDay) {
+                    titleEl.textContent = 'Total';
+                    subtitleEl.textContent = 'Period Total';
+                } else {
+                    titleEl.textContent = 'Total';
+                    subtitleEl.textContent = 'All Time Logged';
+                }
+            }
+            if (window.attachHoverSwap) window.attachHoverSwap();
+        };
+
+        window.toggleMatrixMode = function() {
+            const period = window.currentPeriod || 'day';
+            if (period !== 'week' && period !== 'month') return;
+            window.matrixMode = window.matrixMode === 'avg' ? 'total' : 'avg';
+            window.updateMatrixDisplay();
         };
 
         // Decimal helpers (global) used by modal and charts
@@ -847,6 +910,10 @@
                 .then(data => {
                     console.log('Data received:', data);
                     setGlobalLoading(false);
+                    if (filterType === 'all') {
+                        window.modalSort = 'time_asc';
+                        window.modalSortLabel = 'Time ↑';
+                    }
                     window.showModal(title, data, filterType);
                 })
                 .catch(error => {
@@ -881,10 +948,9 @@
             };
             const getKey = (task) => {
                 if (filterType === 'tag') {
-                    if (task.urgent && task.important) return 'Critical';
-                    if (task.important && !task.urgent) return 'Growth';
-                    if (task.urgent && !task.important) return 'Drudgery';
-                    return 'Waste';
+                    let key = String(task.task || '').trim();
+                    if (!key || /^(undefined|null|none|nan)$/i.test(key)) key = 'Unspecified';
+                    return key;
                 }
                 return normalizeTagName(task.tag);
             };
@@ -1276,7 +1342,7 @@
         // Initialize on DOM load
         document.addEventListener('DOMContentLoaded', function() {
             function setActiveNav(id) {
-                ['navHome','navMatrix','navTags','navFilter'].forEach(k => {
+                ['navHome','navMatrix','navTags','navGraphs','navFilter'].forEach(k => {
                     const el = document.getElementById(k);
                     if (!el) return;
                     if (k === id) {
@@ -1296,10 +1362,15 @@
             const homeBtn = document.getElementById('navHome');
             const matrixBtn = document.getElementById('navMatrix');
             const tagsBtn = document.getElementById('navTags');
+            const graphsBtn = document.getElementById('navGraphs');
             const filterBtn = document.getElementById('navFilter');
             if (homeBtn) homeBtn.onclick = () => { smoothScrollTo('top'); setActiveNav('navHome'); };
             if (matrixBtn) matrixBtn.onclick = () => { smoothScrollTo('matrix'); setActiveNav('navMatrix'); };
             if (tagsBtn) tagsBtn.onclick = () => { smoothScrollTo('tags'); setActiveNav('navTags'); };
+            if (graphsBtn) graphsBtn.onclick = () => {
+                setActiveNav('navGraphs');
+                window.location.href = "{{ url_for('graphs') }}";
+            };
             if (filterBtn) {
                 filterBtn.onclick = () => {
                     openMobileFilter();
@@ -1389,6 +1460,10 @@
 
             window.dateCursor = new Date(window.currentDate);
             window.renderDateGrid();
+
+            const isMultiDayPeriod = period === 'week' || period === 'month';
+            window.matrixMode = isMultiDayPeriod ? 'avg' : 'total';
+            window.updateMatrixDisplay();
 
             const tagCanvas = document.getElementById('tagChart');
             const tagCtx = tagCanvas ? tagCanvas.getContext('2d') : null;

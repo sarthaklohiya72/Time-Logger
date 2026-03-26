@@ -39,6 +39,13 @@ API_AUTH_TOKEN_ENV = "TIME_TRACKER_API_TOKEN"
 SYNC_INTERVAL_SECONDS = int(os.getenv("SYNC_INTERVAL_SECONDS", "300"))
 SYNC_FAIL_COOLDOWN_SECONDS = int(os.getenv("SYNC_FAIL_COOLDOWN_SECONDS", "1800"))
 SPECIAL_TAGS = {"Work", "Necessity", "Soul", "Rest", "Waste"}
+GRAPH_TAG_MAP = {
+    "work": "Work",
+    "necessity": "Necessity",
+    "soul": "Soul",
+    "rest": "Rest",
+    "waste": "Waste",
+}
 
 _LAST_SYNC_TS_BY_USER: Dict[int, datetime] = {}
 _LAST_SYNC_FAIL_TS_BY_USER: Dict[int, datetime] = {}
@@ -875,6 +882,102 @@ def dashboard():
         except Exception:
             pass
     return resp
+
+
+@app.route("/graphs")
+@login_required
+def graphs():
+    user_id = int(get_current_user_id() or 0)
+    user_row = _get_user_by_id(user_id)
+    current_user = {"id": user_id, "username": (user_row["username"] if user_row else "")}
+    return render_template("graphs.html", current_user=current_user)
+
+
+@app.route("/api/graph-data")
+@api_or_login_required
+def graph_data():
+    user_id = int(getattr(g, "user_id", 0) or 0)
+    metric = (request.args.get("metric") or "total").strip().lower()
+    raw_days = request.args.get("days") or "30"
+    try:
+        days = max(1, min(int(raw_days), 365))
+    except Exception:
+        days = 30
+
+    end_date = parse_date_param(request.args.get("end"))
+    start_date = end_date - timedelta(days=days - 1)
+
+    df = fetch_local_data(user_id)
+    if df.empty:
+        labels = [
+            (start_date + timedelta(days=i)).strftime("%Y-%m-%d") for i in range(days)
+        ]
+        return jsonify(
+            {
+                "labels": labels,
+                "values": [0 for _ in labels],
+                "total_hours": 0,
+                "avg_hours": 0,
+                "max_hours": 0,
+            }
+        )
+
+    if "primary_tag" not in df.columns:
+        df["primary_tag"] = df["tag"].apply(primary_special_tag)
+
+    df = df[(df["date"] >= start_date) & (df["date"] <= end_date)]
+    if df.empty:
+        labels = [
+            (start_date + timedelta(days=i)).strftime("%Y-%m-%d") for i in range(days)
+        ]
+        return jsonify(
+            {
+                "labels": labels,
+                "values": [0 for _ in labels],
+                "total_hours": 0,
+                "avg_hours": 0,
+                "max_hours": 0,
+            }
+        )
+
+    if metric in GRAPH_TAG_MAP:
+        tag_name = GRAPH_TAG_MAP[metric]
+        df = df[df["primary_tag"] == tag_name]
+    elif metric == "important":
+        df = df[df["important"]]
+    elif metric == "urgent":
+        df = df[df["urgent"]]
+    elif metric == "q1":
+        df = df[(df["important"]) & (df["urgent"])]
+    elif metric == "q2":
+        df = df[(df["important"]) & (~df["urgent"])]
+    elif metric == "q3":
+        df = df[(df["urgent"]) & (~df["important"])]
+    elif metric == "q4":
+        df = df[(~df["urgent"]) & (~df["important"])]
+
+    daily = df.groupby("date")["duration"].sum() if not df.empty else {}
+    labels = []
+    values = []
+    for i in range(days):
+        day = start_date + timedelta(days=i)
+        labels.append(day.strftime("%Y-%m-%d"))
+        minutes = float(daily.get(day, 0) if hasattr(daily, "get") else 0)
+        values.append(round(minutes / 60.0, 2))
+
+    total_hours = round(sum(values), 2)
+    avg_hours = round(total_hours / days, 2) if days else 0
+    max_hours = round(max(values) if values else 0, 2)
+
+    return jsonify(
+        {
+            "labels": labels,
+            "values": values,
+            "total_hours": total_hours,
+            "avg_hours": avg_hours,
+            "max_hours": max_hours,
+        }
+    )
 
 
 @app.route("/api/tasks")

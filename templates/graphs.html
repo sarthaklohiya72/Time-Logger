@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Graphs - Time Tracker Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: radial-gradient(circle at top left, #F7F1E6 0%, #F2E6D5 40%, #E9DDCB 100%);
+            color: #111827;
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+        }
+        .luxury-card {
+            background: linear-gradient(135deg, #FEFCF8, #F5EDE1);
+            border: 1px solid rgba(148, 126, 86, 0.18);
+            box-shadow: 0 18px 40px rgba(15, 23, 42, 0.06);
+        }
+        .primary-cta {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.7rem 1.6rem;
+            border-radius: 9999px;
+            background: #111827;
+            color: #F8D574;
+            font-size: 0.9rem;
+            letter-spacing: 0.03em;
+            font-weight: 600;
+            box-shadow: 0 14px 32px rgba(17, 24, 39, 0.55);
+            border: 1px solid rgba(248, 213, 116, 0.4);
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+        }
+        .primary-cta:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 20px 40px rgba(17, 24, 39, 0.7);
+            filter: brightness(1.03);
+        }
+        .soft-pill {
+            background: rgba(255, 255, 255, 0.7);
+            border: 1px solid rgba(148, 126, 86, 0.28);
+        }
+        .range-pill.active, .ma-pill.active {
+            background: linear-gradient(135deg, #F8D574, #F5B826);
+            color: #111827;
+            box-shadow: 0 12px 26px rgba(185, 132, 40, 0.35);
+        }
+    </style>
+</head>
+<body class="antialiased">
+    <header class="bg-white/90 backdrop-blur border-b border-slate-200 shadow-sm" role="banner">
+        <div class="max-w-6xl mx-auto px-6 md:px-8 py-6">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div>
+                    <h1 class="text-2xl font-semibold text-gray-900 tracking-tight">Time Tracker Pro</h1>
+                    <p class="text-sm text-gray-500 mt-1">Trends and patterns over time</p>
+                </div>
+                <div class="flex items-center gap-3">
+                    <a href="{{ url_for('dashboard') }}" class="px-4 py-2 rounded-full bg-white/80 border border-[rgba(148,126,86,0.35)] text-sm text-gray-700 hover:bg-[#F7F1E6] transition-all">Back to Dashboard</a>
+                    {% if current_user and current_user.username %}
+                        <div class="hidden md:flex items-center gap-2">
+                            <div class="px-3 py-2 rounded-full bg-white/80 border border-[rgba(148,126,86,0.35)] text-xs font-semibold text-gray-800">
+                                {{ current_user.username }}
+                            </div>
+                            <a href="{{ url_for('logout') }}" class="px-3 py-2 rounded-full bg-gray-900 text-amber-300 text-xs font-semibold shadow-lg">Logout</a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto px-4 md:px-8 py-6 md:py-12 pb-20 md:pb-12">
+        <div class="mb-6 md:mb-8">
+            <h2 class="text-2xl md:text-4xl font-light text-gray-900 mb-1 md:mb-2">Time Trends</h2>
+            <p class="text-sm md:text-base text-gray-600">Pick a focus and see how it moves across days.</p>
+        </div>
+
+        <div class="luxury-card rounded-2xl md:rounded-3xl p-4 md:p-8 mb-6 md:mb-8">
+            <div class="space-y-5 md:space-y-0 md:grid md:gap-6 md:grid-cols-[1.2fr_1fr]">
+                <div>
+                    <label class="block text-xs md:text-sm font-medium text-gray-700 mb-3">What do you want to track?</label>
+                    <div class="relative">
+                        <button id="metricSelectBtn" class="w-full px-4 py-3 rounded-2xl bg-white/80 border border-[rgba(148,126,86,0.35)] text-left text-sm md:text-base text-gray-900 font-medium flex items-center justify-between hover:bg-[#F7F1E6] transition-all">
+                            <span id="metricSelectLabel">Important</span>
+                            <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                            </svg>
+                        </button>
+                        <div id="metricSelectMenu" class="hidden absolute z-50 w-full mt-2 bg-white rounded-2xl shadow-2xl border border-[rgba(148,126,86,0.35)] max-h-80 overflow-y-auto">
+                            <div class="metric-option px-4 py-3 hover:bg-[#F7F1E6] cursor-pointer text-sm transition-colors" data-value="important">Important</div>
+                            <div class="metric-option px-4 py-3 hover:bg-[#F7F1E6] cursor-pointer text-sm transition-colors" data-value="total">Total time</div>
+                            <div class="metric-option px-4 py-3 hover:bg-[#F7F1E6] cursor-pointer text-sm transition-colors" data-value="urgent">Urgent</div>
+                            <div class="metric-option px-4 py-3 hover:bg-[#F7F1E6] cursor-pointer text-sm transition-colors border-t border-gray-100" data-value="q1">Important & Urgent (Critical)</div>
+                            <div class="metric-option px-4 py-3 hover:bg-[#F7F1E6] cursor-pointer text-sm transition-colors" data-value="q2">Important & Not Urgent (Growth)</div>
+                            <div class="metric-option px-4 py-3 hover:bg-[#F7F1E6] cursor-pointer text-sm transition-colors" data-value="q3">Urgent & Not Important (Drudgery)</div>
+                            <div class="metric-option px-4 py-3 hover:bg-[#F7F1E6] cursor-pointer text-sm transition-colors" data-value="q4">Not Urgent & Not Important (Waste)</div>
+                            <div class="metric-option px-4 py-3 hover:bg-[#F7F1E6] cursor-pointer text-sm transition-colors border-t border-gray-100" data-value="work">Work</div>
+                            <div class="metric-option px-4 py-3 hover:bg-[#F7F1E6] cursor-pointer text-sm transition-colors" data-value="necessity">Necessity</div>
+                            <div class="metric-option px-4 py-3 hover:bg-[#F7F1E6] cursor-pointer text-sm transition-colors" data-value="soul">Soul</div>
+                            <div class="metric-option px-4 py-3 hover:bg-[#F7F1E6] cursor-pointer text-sm transition-colors" data-value="rest">Rest</div>
+                            <div class="metric-option px-4 py-3 hover:bg-[#F7F1E6] cursor-pointer text-sm transition-colors" data-value="waste">Waste</div>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs md:text-sm font-medium text-gray-700 mb-3">Time range</label>
+                    <div class="flex flex-wrap gap-2 md:gap-3">
+                        <button class="range-pill soft-pill px-3 md:px-4 py-2 rounded-full text-xs md:text-sm font-medium text-gray-700" data-range="7">7 days</button>
+                        <button class="range-pill soft-pill px-3 md:px-4 py-2 rounded-full text-xs md:text-sm font-medium text-gray-700 active" data-range="30">30 days</button>
+                        <button class="range-pill soft-pill px-3 md:px-4 py-2 rounded-full text-xs md:text-sm font-medium text-gray-700" data-range="90">90 days</button>
+                        <button class="range-pill soft-pill px-3 md:px-4 py-2 rounded-full text-xs md:text-sm font-medium text-gray-700" data-range="180">180 days</button>
+                    </div>
+                    <div class="mt-3">
+                        <label class="block text-xs text-gray-500 mb-2">Moving average window</label>
+                        <div class="flex gap-2">
+                            <button class="ma-pill soft-pill px-3 py-1.5 rounded-full text-xs font-medium text-gray-700" data-ma="7">7d</button>
+                            <button class="ma-pill soft-pill px-3 py-1.5 rounded-full text-xs font-medium text-gray-700 active" data-ma="14">14d</button>
+                            <button class="ma-pill soft-pill px-3 py-1.5 rounded-full text-xs font-medium text-gray-700" data-ma="30">30d</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="luxury-card rounded-2xl md:rounded-3xl p-4 md:p-8 mb-6 md:mb-8">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 md:gap-4 mb-5 md:mb-6">
+                <div>
+                    <h3 class="text-lg md:text-xl font-semibold text-gray-900" id="chartTitle">Important</h3>
+                    <p class="text-xs md:text-sm text-gray-500" id="chartSubtitle">Last 30 days</p>
+                </div>
+                <button id="refreshGraph" class="primary-cta text-sm md:text-base px-4 md:px-6 py-2 md:py-3">Refresh</button>
+            </div>
+            <div class="relative" style="height: 280px;">
+                <canvas id="graphCanvas"></canvas>
+            </div>
+        </div>
+
+        <div class="grid gap-3 md:gap-4 grid-cols-3">
+            <div class="luxury-card rounded-xl md:rounded-2xl p-3 md:p-5 text-center">
+                <p class="text-[10px] md:text-xs uppercase tracking-wider text-gray-500">Total Hours</p>
+                <div class="text-xl md:text-2xl font-light text-gray-900 mt-1 md:mt-2" id="totalHours">0h</div>
+            </div>
+            <div class="luxury-card rounded-xl md:rounded-2xl p-3 md:p-5 text-center">
+                <p class="text-[10px] md:text-xs uppercase tracking-wider text-gray-500">Avg/Day</p>
+                <div class="text-xl md:text-2xl font-light text-gray-900 mt-1 md:mt-2" id="avgHours">0h</div>
+            </div>
+            <div class="luxury-card rounded-xl md:rounded-2xl p-3 md:p-5 text-center">
+                <p class="text-[10px] md:text-xs uppercase tracking-wider text-gray-500">Best Day</p>
+                <div class="text-xl md:text-2xl font-light text-gray-900 mt-1 md:mt-2" id="maxHours">0h</div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const metricColors = {
+            total: '#111827',
+            important: '#2563EB',
+            urgent: '#F97316',
+            q1: '#F59E0B',
+            q2: '#10B981',
+            q3: '#94A3B8',
+            q4: '#EF4444',
+            work: '#10B981',
+            necessity: '#F59E0B',
+            soul: '#6366F1',
+            rest: '#C4B5FD',
+            waste: '#DC2626'
+        };
+
+        const metricLabels = {
+            total: 'Total time',
+            important: 'Important',
+            urgent: 'Urgent',
+            q1: 'Important & Urgent',
+            q2: 'Important & Not Urgent',
+            q3: 'Urgent & Not Important',
+            q4: 'Not Urgent & Not Important',
+            work: 'Work',
+            necessity: 'Necessity',
+            soul: 'Soul',
+            rest: 'Rest',
+            waste: 'Waste'
+        };
+
+        let currentDays = 30;
+        let chartInstance = null;
+        let currentMetric = 'important';
+        let maWindow = 14;
+
+        const metricSelectBtn = document.getElementById('metricSelectBtn');
+        const metricSelectLabel = document.getElementById('metricSelectLabel');
+        const metricSelectMenu = document.getElementById('metricSelectMenu');
+        const chartTitle = document.getElementById('chartTitle');
+        const chartSubtitle = document.getElementById('chartSubtitle');
+        const totalHoursEl = document.getElementById('totalHours');
+        const avgHoursEl = document.getElementById('avgHours');
+        const maxHoursEl = document.getElementById('maxHours');
+
+        function formatHours(value) {
+            const num = Number(value) || 0;
+            return `${num.toFixed(1)}h`;
+        }
+
+        function getEndDate() {
+            const now = new Date();
+            const yyyy = now.getFullYear();
+            const mm = String(now.getMonth() + 1).padStart(2, '0');
+            const dd = String(now.getDate()).padStart(2, '0');
+            return `${yyyy}-${mm}-${dd}`;
+        }
+
+        function movingAverage(values, windowSize = 14) {
+            const result = [];
+            for (let i = 0; i < values.length; i++) {
+                const start = Math.max(0, i - windowSize + 1);
+                const slice = values.slice(start, i + 1);
+                const sum = slice.reduce((acc, v) => acc + v, 0);
+                const avg = slice.length ? sum / slice.length : 0;
+                result.push(Number(avg.toFixed(2)));
+            }
+            return result;
+        }
+
+        function updateChart({ labels, values, total_hours, avg_hours, max_hours }, metricKey) {
+            const ctx = document.getElementById('graphCanvas').getContext('2d');
+            const color = metricColors[metricKey] || '#111827';
+            const gradient = ctx.createLinearGradient(0, 0, 0, 320);
+            gradient.addColorStop(0, `${color}55`);
+            gradient.addColorStop(1, `${color}05`);
+            const avgValues = movingAverage(values, maWindow);
+            const avgColor = color.startsWith('#') && color.length === 7 ? `${color}99` : 'rgba(17,24,39,0.55)';
+
+            const shortLabels = labels.map(label => {
+                const d = new Date(label);
+                return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            });
+
+            const avgDataset = {
+                label: `Moving avg (${maWindow}d)`,
+                data: avgValues,
+                borderColor: avgColor,
+                borderWidth: 2,
+                borderDash: [6, 6],
+                fill: false,
+                tension: 0.35,
+                pointRadius: 0,
+                pointHoverRadius: 0
+            };
+
+            if (chartInstance) {
+                chartInstance.data.labels = shortLabels;
+                chartInstance.data.datasets[0].data = values;
+                chartInstance.data.datasets[0].borderColor = color;
+                chartInstance.data.datasets[0].backgroundColor = gradient;
+                if (chartInstance.data.datasets[1]) {
+                    chartInstance.data.datasets[1].data = avgValues;
+                    chartInstance.data.datasets[1].borderColor = avgColor;
+                } else {
+                    chartInstance.data.datasets.push(avgDataset);
+                }
+                chartInstance.update();
+            } else {
+                chartInstance = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: shortLabels,
+                        datasets: [
+                            {
+                                label: metricLabels[metricKey] || 'Time',
+                                data: values,
+                                borderColor: color,
+                                backgroundColor: gradient,
+                                borderWidth: 3,
+                                fill: true,
+                                tension: 0.35,
+                                pointRadius: 2,
+                                pointHoverRadius: 5
+                            },
+                            avgDataset
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                backgroundColor: 'rgba(17, 24, 39, 0.96)',
+                                padding: 12,
+                                titleFont: { family: 'Inter', size: 12, weight: '600' },
+                                bodyFont: { family: 'Inter', size: 12, weight: '400' },
+                                callbacks: {
+                                    label: function(context) {
+                                        return `${context.dataset.label}: ${context.parsed.y.toFixed(2)}h`;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                grid: { display: false },
+                                ticks: { color: '#6B7280', maxTicksLimit: 8 }
+                            },
+                            y: {
+                                grid: { color: 'rgba(148,163,184,0.25)' },
+                                ticks: { color: '#6B7280' }
+                            }
+                        }
+                    }
+                });
+            }
+
+            totalHoursEl.textContent = formatHours(total_hours);
+            avgHoursEl.textContent = formatHours(avg_hours);
+            maxHoursEl.textContent = formatHours(max_hours);
+
+            const label = metricLabels[metricKey] || 'Total time';
+            chartTitle.textContent = label;
+            chartSubtitle.textContent = `Last ${currentDays} days · 7-day avg`;
+        }
+
+        async function fetchGraphData() {
+            const metricKey = currentMetric;
+            const end = getEndDate();
+            const url = `/api/graph-data?metric=${encodeURIComponent(metricKey)}&days=${currentDays}&end=${end}`;
+            try {
+                const response = await fetch(url, { credentials: 'include' });
+                if (response.status === 401) {
+                    const nextUrl = encodeURIComponent(window.location.pathname + window.location.search);
+                    window.location.href = `/login?next=${nextUrl}`;
+                    return;
+                }
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const data = await response.json();
+                updateChart(data, metricKey);
+            } catch (e) {
+                console.error('Failed to load graph data', e);
+            }
+        }
+
+        metricSelectBtn.addEventListener('click', () => {
+            metricSelectMenu.classList.toggle('hidden');
+        });
+
+        document.querySelectorAll('.metric-option').forEach(option => {
+            option.addEventListener('click', () => {
+                currentMetric = option.dataset.value;
+                metricSelectLabel.textContent = option.textContent;
+                metricSelectMenu.classList.add('hidden');
+                fetchGraphData();
+            });
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('#metricSelectBtn') && !e.target.closest('#metricSelectMenu')) {
+                metricSelectMenu.classList.add('hidden');
+            }
+        });
+        document.querySelectorAll('.range-pill').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.range-pill').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentDays = Number(btn.dataset.range || 30);
+                fetchGraphData();
+            });
+        });
+
+        document.querySelectorAll('.ma-pill').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.ma-pill').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                maWindow = Number(btn.dataset.ma || 14);
+                fetchGraphData();
+            });
+        });
+
+        document.getElementById('refreshGraph').addEventListener('click', fetchGraphData);
+
+        currentMetric = 'important';
+        fetchGraphData();
+    </script>
+</body>
+</html>
