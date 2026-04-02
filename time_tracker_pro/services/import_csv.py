@@ -13,41 +13,44 @@ from .parser import TimeLogParser
 def import_csv_content(db_name: str, user_id: int, csv_content: str) -> int:
     df = pd.read_csv(StringIO(csv_content))
 
-    col_a = None
-    col_b = None
+    log_entry_col = None
     logged_time_col = None
 
     for col in df.columns:
         col_lower = col.lower().strip()
-        if "start" in col_lower or col_lower == "cola":
-            col_a = col
-        elif "task" in col_lower or col_lower == "colb" or "raw" in col_lower:
-            col_b = col
-        elif "logged" in col_lower or "time" in col_lower:
+        if "logged" in col_lower and "time" in col_lower:
             logged_time_col = col
+        elif (
+            "log entry" in col_lower
+            or "entry" in col_lower
+            or "task" in col_lower
+            or "details" in col_lower
+            or "raw" in col_lower
+            or col_lower == "colb"
+        ):
+            log_entry_col = col
 
-    if col_b is None:
+    if log_entry_col is None:
         for col in df.columns:
-            if col.lower() not in ["logged time", "raw start"]:
-                col_b = col
+            if col != logged_time_col:
+                log_entry_col = col
                 break
 
-    if col_b is None:
-        raise ValueError("Could not identify task column in CSV")
+    if log_entry_col is None:
+        raise ValueError("Could not identify log entry column in CSV")
 
     parser = TimeLogParser()
     parsed_rows: List[Dict[str, Any]] = []
     previous_end: Optional[datetime] = None
 
     for _, row in df.iterrows():
-        col_a_val = str(row.get(col_a, "") or "") if col_a else ""
-        col_b_val = str(row.get(col_b, "") or "")
+        log_entry_val = str(row.get(log_entry_col, "") or "")
         client_now = str(row.get(logged_time_col, "")) if logged_time_col else None
 
-        if not col_b_val or col_b_val.strip() == "":
+        if not log_entry_val or log_entry_val.strip() == "":
             continue
 
-        parsed = parser.parse_row(col_a_val, col_b_val, client_now, previous_end)
+        parsed = parser.parse_row(log_entry_val, client_now, previous_end)
         parsed_rows.append(parsed)
         previous_end = parsed["end_dt"]
 

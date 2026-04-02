@@ -59,6 +59,103 @@
                 {{ icon_success }}
             </div>
         {% endif %}
+        {% if profile_error %}
+            <div class="px-4 py-3 rounded-2xl bg-red-50 border border-red-200 text-sm text-red-700 mb-4">
+                {{ profile_error }}
+            </div>
+        {% endif %}
+        {% if profile_success %}
+            <div class="px-4 py-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-sm text-emerald-700 mb-4">
+                {{ profile_success }}
+            </div>
+        {% endif %}
+
+        <div class="luxury-card rounded-3xl p-8 mb-6">
+            <div class="flex items-start justify-between flex-wrap gap-4">
+                <div>
+                    <h2 class="text-xl font-semibold text-gray-900">Account</h2>
+                    <p class="text-sm text-gray-600 mt-1">Manage your profile details and security preferences.</p>
+                </div>
+                <a href="{{ url_for('api.export_csv') }}" class="px-4 py-2 rounded-full bg-gray-900 text-amber-300 text-sm font-semibold shadow-lg">Export CSV</a>
+            </div>
+
+            <div class="mt-6 grid gap-6">
+                <div class="rounded-2xl border border-[rgba(148,126,86,0.25)] bg-white/80 p-5">
+                    <h3 class="text-sm font-semibold text-gray-900">Current Profile</h3>
+                    <div class="mt-3 text-sm text-gray-600 space-y-1">
+                        <div><span class="font-semibold text-gray-700">Username:</span> {{ profile_info.username }}</div>
+                        <div><span class="font-semibold text-gray-700">Email:</span> {{ profile_info.email }}</div>
+                        <div><span class="font-semibold text-gray-700">User ID:</span> {{ profile_info.user_id }}</div>
+                    </div>
+                </div>
+
+                <div class="rounded-2xl border border-[rgba(148,126,86,0.25)] bg-white/80 p-5">
+                    <div class="flex items-center justify-between flex-wrap gap-3">
+                        <div>
+                            <h3 class="text-sm font-semibold text-gray-900">Update Username</h3>
+                            <p class="text-xs text-gray-500 mt-1">Confirm with your password or a one-time code.</p>
+                        </div>
+                        <form method="POST" action="{{ url_for('auth.profile_request_otp') }}">
+                            <input type="hidden" name="purpose" value="change_username" />
+                            <button type="submit" class="px-3 py-1.5 rounded-full bg-white border border-[rgba(148,126,86,0.35)] text-xs font-semibold text-gray-700 hover:bg-[#F7F1E6] transition-all">Send code</button>
+                        </form>
+                    </div>
+                    <form method="POST" action="{{ url_for('auth.update_profile') }}" class="mt-4 space-y-3">
+                        <input type="hidden" name="action" value="update_username" />
+                        <input name="new_username" placeholder="New username" class="w-full px-4 py-3 rounded-2xl bg-white border border-[rgba(148,126,86,0.35)] focus:outline-none focus:ring-2 focus:ring-amber-300 text-sm" />
+                        <div class="grid sm:grid-cols-2 gap-3">
+                            <input type="password" name="current_password" placeholder="Current password" class="w-full px-4 py-3 rounded-2xl bg-white border border-[rgba(148,126,86,0.35)] focus:outline-none focus:ring-2 focus:ring-amber-300 text-sm" />
+                            <input name="otp_code" placeholder="Email code" class="w-full px-4 py-3 rounded-2xl bg-white border border-[rgba(148,126,86,0.35)] focus:outline-none focus:ring-2 focus:ring-amber-300 text-sm" />
+                        </div>
+                        <button type="submit" class="w-full py-3 rounded-2xl bg-gray-900 text-amber-300 font-semibold shadow-lg active:scale-[0.99] transition-transform">Update Username</button>
+                    </form>
+                </div>
+
+                <div class="rounded-2xl border border-[rgba(148,126,86,0.25)] bg-white/80 p-5">
+                    <div class="flex items-center justify-between flex-wrap gap-3">
+                        <div>
+                            <h3 class="text-sm font-semibold text-gray-900">Change Password</h3>
+                            <p class="text-xs text-gray-500 mt-1">Confirm with your password or a one-time code.</p>
+                        </div>
+                        <form method="POST" action="{{ url_for('auth.profile_request_otp') }}">
+                            <input type="hidden" name="purpose" value="change_password" />
+                            <button type="submit" class="px-3 py-1.5 rounded-full bg-white border border-[rgba(148,126,86,0.35)] text-xs font-semibold text-gray-700 hover:bg-[#F7F1E6] transition-all">Send code</button>
+                        </form>
+                    </div>
+                    <form method="POST" action="{{ url_for('auth.update_profile') }}" class="mt-4 space-y-3">
+                        <input type="hidden" name="action" value="update_password" />
+                        <input type="password" name="new_password" placeholder="New password" class="w-full px-4 py-3 rounded-2xl bg-white border border-[rgba(148,126,86,0.35)] focus:outline-none focus:ring-2 focus:ring-amber-300 text-sm" />
+                        <input type="password" name="confirm_password" placeholder="Confirm new password" class="w-full px-4 py-3 rounded-2xl bg-white border border-[rgba(148,126,86,0.35)] focus:outline-none focus:ring-2 focus:ring-amber-300 text-sm" />
+                        <div class="grid sm:grid-cols-2 gap-3">
+                            <input type="password" name="current_password" placeholder="Current password" class="w-full px-4 py-3 rounded-2xl bg-white border border-[rgba(148,126,86,0.35)] focus:outline-none focus:ring-2 focus:ring-amber-300 text-sm" />
+                            <input name="otp_code" placeholder="Email code" class="w-full px-4 py-3 rounded-2xl bg-white border border-[rgba(148,126,86,0.35)] focus:outline-none focus:ring-2 focus:ring-amber-300 text-sm" />
+                        </div>
+                        <button type="submit" class="w-full py-3 rounded-2xl bg-gray-900 text-amber-300 font-semibold shadow-lg active:scale-[0.99] transition-transform">Update Password</button>
+                    </form>
+                </div>
+
+                <div class="rounded-2xl border border-[rgba(148,126,86,0.25)] bg-white/80 p-5">
+                    <div>
+                        <h3 class="text-sm font-semibold text-gray-900">Change Email</h3>
+                        <p class="text-xs text-gray-500 mt-1">We will send codes to both your old and new emails.</p>
+                    </div>
+                    <form method="POST" action="{{ url_for('auth.profile_request_otp') }}" class="mt-4 space-y-3">
+                        <input type="hidden" name="purpose" value="change_email" />
+                        <input name="new_email" placeholder="New email" value="{{ pending_email or '' }}" class="w-full px-4 py-3 rounded-2xl bg-white border border-[rgba(148,126,86,0.35)] focus:outline-none focus:ring-2 focus:ring-amber-300 text-sm" />
+                        <button type="submit" class="w-full py-3 rounded-2xl border border-[rgba(148,126,86,0.35)] text-gray-700 font-semibold bg-white/80 hover:bg-[#F7F1E6] transition-all">Send Verification Codes</button>
+                    </form>
+                    <form method="POST" action="{{ url_for('auth.update_profile') }}" class="mt-4 space-y-3">
+                        <input type="hidden" name="action" value="update_email" />
+                        <input type="hidden" name="new_email" value="{{ pending_email or '' }}" />
+                        <div class="grid sm:grid-cols-2 gap-3">
+                            <input name="old_email_code" placeholder="Code sent to old email" class="w-full px-4 py-3 rounded-2xl bg-white border border-[rgba(148,126,86,0.35)] focus:outline-none focus:ring-2 focus:ring-amber-300 text-sm" />
+                            <input name="new_email_code" placeholder="Code sent to new email" class="w-full px-4 py-3 rounded-2xl bg-white border border-[rgba(148,126,86,0.35)] focus:outline-none focus:ring-2 focus:ring-amber-300 text-sm" />
+                        </div>
+                        <button type="submit" class="w-full py-3 rounded-2xl bg-gray-900 text-amber-300 font-semibold shadow-lg active:scale-[0.99] transition-transform">Update Email</button>
+                    </form>
+                </div>
+            </div>
+        </div>
         <div class="luxury-card rounded-3xl p-8">
             <h2 class="text-xl font-semibold text-gray-900">Sheety Sync</h2>
             <p class="text-sm text-gray-600 mt-1">Each user can connect their own Sheety project. This keeps data separate across users.</p>

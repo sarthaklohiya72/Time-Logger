@@ -14,6 +14,7 @@ from functools import wraps
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 from flask import send_file
 import pandas as pd
+from dateutil import parser as date_parser
 import requests
 from dotenv import load_dotenv
 from flask import Flask, jsonify, render_template, request, make_response, redirect, session, url_for, g, abort
@@ -201,10 +202,22 @@ def init_db() -> None:
                 expires_at TEXT NOT NULL,
                 attempts INTEGER DEFAULT 0,
                 verified_at TEXT,
+                purpose TEXT DEFAULT 'verify_email',
                 FOREIGN KEY(user_id) REFERENCES users(id)
             )
             """
         )
+        verification_cols = [
+            row["name"]
+            for row in conn.execute("PRAGMA table_info(email_verifications)").fetchall()
+        ]
+        if "purpose" not in verification_cols:
+            conn.execute(
+                "ALTER TABLE email_verifications ADD COLUMN purpose TEXT DEFAULT 'verify_email'"
+            )
+            conn.execute(
+                "UPDATE email_verifications SET purpose = 'verify_email' WHERE purpose IS NULL OR purpose = ''"
+            )
         conn.commit()
         conn.close()
     except Exception as exc:
@@ -818,6 +831,11 @@ class TimeLogParser:
             r"^(\d{1,2})(?:[:\s]?(\d{2}))?\s*([ap]m)?\s*",
             re.IGNORECASE,
         )
+        self.time_token_pattern = re.compile(
+            r"^(\d{1,2})(?:[:\s]?(\d{2}))?\s*([ap]m)?$",
+            re.IGNORECASE,
+        )
+        self.date_token_pattern = re.compile(r"^(\d{1,2})[./-](\d{1,2})(?:[./-](\d{2,4}))?$")
 
     def parse_time_string(
         self, text_str: str, ref_date: datetime
@@ -841,22 +859,147 @@ class TimeLogParser:
             return dt, text_str[match.end() :].strip()
         return None, text_str
 
+    def _parse_time_token(self, token: str, ref_date: datetime) -> Optional[Tuple[int, int]]:
+        match = self.time_token_pattern.match(token)
+        if not match:
+            normalized = token
+            if re.fullmatch(r"\d{1,2}\.\d{2}([ap]m)?", token, re.IGNORECASE):
+                normalized = token.replace(".", ":", 1)
+            if (
+                ":" in token
+                or "." in token
+                or re.search(r"[ap]m", token, re.IGNORECASE)
+                or re.fullmatch(r"\d{3,4}", token)
+            ):
+                try:
+                    parsed = date_parser.parse(normalized, default=ref_date, fuzzy=False)
+                    return parsed.hour, parsed.minute
+                except Exception:
+                    return None
+            return None
+        hour, minute = int(match.group(1)), int(match.group(2) or 0)
+        ampm = match.group(3).lower() if match.group(3) else None
+        if ampm == "pm" and hour < 12:
+            hour += 12
+        if ampm == "am" and hour == 12:
+            hour = 0
+        if hour > 23 or minute > 59:
+            return None
+        return hour, minute
+
+    def _parse_date_token(self, token: str, ref_date: datetime) -> Optional[datetime.date]:
+        match = self.date_token_pattern.match(token)
+        if not match:
+            if re.search(r"[ap]m", token, re.IGNORECASE) or ":" in token:
+                return None
+            if re.search(r"[A-Za-z]", token) or re.search(r"[./-]", token) or re.fullmatch(r"\d{4}", token):
+                try:
+                    parsed = date_parser.parse(token, default=ref_date, dayfirst=True, fuzzy=False)
+                    return parsed.date()
+                except Exception:
+                    return None
+            return None
+        day = int(match.group(1))
+        month = int(match.group(2))
+        year_str = match.group(3)
+        if year_str:
+            year = int(year_str)
+            if len(year_str) == 2:
+                year += 2000
+        else:
+            year = ref_date.year
+            if month > ref_date.month + 1:
+                year -= 1
+        try:
+            return datetime(year, month, day).date()
+        except ValueError:
+            return None
+
+    def _combine_dt(self, date_value: datetime.date, time_value: Tuple[int, int]) -> datetime:
+        base = datetime.combine(date_value, datetime.min.time())
+        return base.replace(hour=time_value[0], minute=time_value[1], second=0, microsecond=0)
+
+    def _is_time_after(self, t1: Tuple[int, int], t2: Tuple[int, int]) -> bool:
+        return (t1[0], t1[1]) > (t2[0], t2[1])
+
     def parse_row(
         self,
-        col_a: str,
-        col_b: str,
+        log_entry: str,
         client_now_str: str,
         previous_end_dt: Optional[datetime],
     ) -> Dict[str, Any]:
         try:
             client_now = pd.to_datetime(client_now_str)
+            if pd.isna(client_now):
+                raise ValueError
         except Exception:
             client_now = datetime.now()
 
-        explicit_time_a, _ = self.parse_time_string(col_a, client_now)
-        explicit_time_b, remaining_text = self.parse_time_string(col_b, client_now)
+        if log_entry is None or (isinstance(log_entry, float) and pd.isna(log_entry)):
+            raw_entry = ""
+        else:
+            raw_entry = str(log_entry)
 
-        raw_text = remaining_text if remaining_text else (col_b if col_b else "Unspecified")
+        tokens = raw_entry.strip().split()
+        elements = []
+        dot_positions = []
+        consumed = 0
+
+        def _ampm_normalized(token: str) -> Optional[str]:
+            normalized = token.strip().lower().strip(".,")
+            if normalized in {"am", "a.m", "a.m.", "a"}:
+                return "am"
+            if normalized in {"pm", "p.m", "p.m.", "p"}:
+                return "pm"
+            return None
+
+        i = 0
+        while i < len(tokens):
+            token = tokens[i]
+            trailing_dot = token.endswith(".")
+            cleaned = token.rstrip(".").rstrip(",")
+
+            time_val = self._parse_time_token(cleaned, client_now)
+            consumed_extra = 0
+            if time_val is not None:
+                ampm = None
+                if i + 1 < len(tokens):
+                    ampm = _ampm_normalized(tokens[i + 1])
+                if ampm and not re.search(r"[ap]m\.?$", cleaned, re.IGNORECASE):
+                    merged = f"{cleaned}{ampm}"
+                    merged_time = self._parse_time_token(merged, client_now)
+                    if merged_time is not None:
+                        time_val = merged_time
+                        consumed_extra = 1
+                        trailing_dot = trailing_dot or tokens[i + 1].endswith(".")
+
+            date_val = self._parse_date_token(cleaned, client_now)
+            if time_val:
+                elements.append(("time", time_val))
+                dot_positions.append(trailing_dot)
+            elif date_val:
+                elements.append(("date", date_val))
+                dot_positions.append(trailing_dot)
+            else:
+                break
+            consumed += 1 + consumed_extra
+            i += 1 + consumed_extra
+            if len(elements) >= 4:
+                break
+
+        if i == 0:
+            i = consumed
+
+        remaining_tokens = tokens[consumed:]
+        dot_after_first = dot_positions[0] if dot_positions else False
+        dot_after_last = dot_positions[-1] if dot_positions else False
+        if remaining_tokens and remaining_tokens[0].startswith("."):
+            dot_after_last = True
+            remaining_tokens[0] = remaining_tokens[0].lstrip(".")
+            if not remaining_tokens[0]:
+                remaining_tokens = remaining_tokens[1:]
+
+        raw_text = " ".join(remaining_tokens).strip() or "Unspecified"
         task_name, tag = raw_text.strip(), ""
         is_urg, is_imp = False, False
 
@@ -893,25 +1036,69 @@ class TimeLogParser:
 
         tag = ", ".join(tags) if tags else "Waste"
 
-        end_dt = explicit_time_b if explicit_time_b else client_now
+        def fallback_start(end_dt: datetime) -> datetime:
+            return previous_end_dt or end_dt
 
-        if end_dt > client_now + timedelta(hours=1):
-            end_dt -= timedelta(days=1)
+        current_date = client_now.date()
+        start_dt = previous_end_dt or client_now
+        end_dt = client_now
 
-        start_dt: Optional[datetime] = None
-
-        if explicit_time_a:
-            start_dt = explicit_time_a
-
-        if not start_dt:
-            if previous_end_dt:
-                gap_hours = (end_dt - previous_end_dt).total_seconds() / 3600
-                if gap_hours > 16:
-                    start_dt = end_dt - timedelta(minutes=30)
-                else:
-                    start_dt = previous_end_dt
+        if len(elements) == 0:
+            start_dt = previous_end_dt or client_now
+            end_dt = client_now
+        elif len(elements) == 1 and elements[0][0] == "time":
+            t1 = elements[0][1]
+            if dot_after_last:
+                start_dt = self._combine_dt(current_date, t1)
+                if start_dt > client_now:
+                    start_dt = start_dt - timedelta(days=1)
+                end_dt = client_now
             else:
-                start_dt = end_dt - timedelta(minutes=30)
+                end_dt = self._combine_dt(current_date, t1)
+                if end_dt > client_now:
+                    end_dt = end_dt - timedelta(days=1)
+                start_dt = fallback_start(end_dt)
+        elif len(elements) == 2:
+            times = [val for kind, val in elements if kind == "time"]
+            dates = [val for kind, val in elements if kind == "date"]
+            if len(times) == 1 and len(dates) == 1:
+                t1 = times[0]
+                d1 = dates[0]
+                if dot_after_last:
+                    start_dt = self._combine_dt(d1, t1)
+                    end_dt = client_now
+                else:
+                    end_dt = self._combine_dt(d1, t1)
+                    start_dt = fallback_start(end_dt)
+            elif len(times) == 2:
+                t1, t2 = times[0], times[1]
+                start_date = current_date - timedelta(days=1) if self._is_time_after(t1, t2) else current_date
+                start_dt = self._combine_dt(start_date, t1)
+                end_dt = self._combine_dt(current_date, t2)
+        elif len(elements) == 3:
+            if elements[0][0] == "date" and sum(1 for kind, _ in elements if kind == "time") == 2:
+                d1 = elements[0][1]
+                times = [val for kind, val in elements if kind == "time"]
+                t1, t2 = times[0], times[1]
+                if dot_after_first:
+                    start_dt = self._combine_dt(d1, t1)
+                    end_dt = self._combine_dt(current_date, t2)
+                else:
+                    end_date = d1 + timedelta(days=1) if self._is_time_after(t1, t2) else d1
+                    start_dt = self._combine_dt(d1, t1)
+                    end_dt = self._combine_dt(end_date, t2)
+        elif len(elements) == 4:
+            if (
+                elements[0][0] == "date"
+                and elements[1][0] == "time"
+                and elements[2][0] == "date"
+                and elements[3][0] == "time"
+            ):
+                start_dt = self._combine_dt(elements[0][1], elements[1][1])
+                end_dt = self._combine_dt(elements[2][1], elements[3][1])
+
+        if previous_end_dt is None and start_dt == client_now and end_dt != client_now:
+            start_dt = end_dt
 
         return {
             "start_dt": start_dt,
@@ -993,25 +1180,20 @@ def sync_cloud_data(user_id: int, force: bool = False) -> None:
         previous_end: Optional[datetime] = None
 
         for _, row in cloud_df.iterrows():
-            col_a = _row_text(
+            log_entry = _row_text(
                 row,
                 (
-                    "colA",
-                    "startTime",
-                    "rawStart",
-                    "start_time",
-                    "start time",
-                ),
-            )
-            col_b = _row_text(
-                row,
-                (
-                    "colB",
+                    "logEntry",
+                    "log_entry",
+                    "log entry",
+                    "entry",
                     "taskDetails",
-                    "rawTask",
                     "task",
                     "task_details",
                     "task details",
+                    "rawTask",
+                    "raw_task",
+                    "colB",
                 ),
             )
             client_now = _row_text(
@@ -1023,7 +1205,7 @@ def sync_cloud_data(user_id: int, force: bool = False) -> None:
                 ),
             )
 
-            parsed = parser.parse_row(col_a, col_b, client_now, previous_end)
+            parsed = parser.parse_row(log_entry, client_now, previous_end)
             parsed_rows.append(parsed)
             previous_end = parsed["end_dt"]
 
@@ -1250,8 +1432,29 @@ def login():
         password = request.form.get("password") or ""
         remember = bool(request.form.get("remember"))
         next_url = _safe_next_url(request.form.get("next")) or next_url
+        action = (request.form.get("action") or "").strip().lower()
 
-        if not identifier or not password:
+        if action == "login_otp":
+            if not identifier:
+                error = "Please enter your username, email, or user ID."
+            else:
+                user = _get_user_by_username(identifier)
+                if not user:
+                    error = "No account found with that identifier."
+                else:
+                    session.clear()
+                    session["pending_user_id"] = int(_row_value(user, "id"))
+                    session["pending_remember"] = remember
+                    session["pending_otp_login"] = True
+                    if _send_verification_email(user):
+                        target_email = _row_value(user, "email") or ""
+                        session["verification_success"] = (
+                            f"Verification code sent to {target_email}." if target_email else "Verification code sent."
+                        )
+                    else:
+                        session["verification_error"] = "Unable to send email. Check SMTP settings."
+                    return redirect(url_for("verify_email", next=next_url or ""))
+        elif not identifier or not password:
             error = "Username, email, or user ID and password are required."
         else:
             user = _get_user_by_username(identifier)
@@ -1365,6 +1568,12 @@ def verify_email():
 
     error: Optional[str] = session.pop("verification_error", None)
     success: Optional[str] = session.pop("verification_success", None)
+    next_url = _safe_next_url(request.args.get("next"))
+    title = "Verify your email"
+    subtitle = "We sent a 6-digit code to"
+    if session.get("pending_otp_login"):
+        title = "Log in with OTP"
+        subtitle = "We sent a 6-digit code to"
 
     if request.method == "POST":
         if request.form.get("action") == "resend":
@@ -1379,8 +1588,13 @@ def verify_email():
             else:
                 ok, message = _verify_email_code(int(user["id"]), code)
                 if ok:
-                    _send_welcome_email(user)
                     session.pop("pending_user_id", None)
+                    if session.pop("pending_otp_login", False):
+                        remember = bool(session.pop("pending_remember", False))
+                        session["user_id"] = int(user["id"])
+                        session.permanent = remember
+                        return redirect(next_url or url_for("dashboard"))
+                    _send_welcome_email(user)
                     remember = bool(session.pop("pending_remember", False))
                     session["user_id"] = int(user["id"])
                     session.permanent = remember
@@ -1398,6 +1612,8 @@ def verify_email():
         success=success,
         email=_row_value(user, "email"),
         name=_display_name(user),
+        title=title,
+        subtitle=subtitle,
     )
 
 
@@ -2097,30 +2313,34 @@ def import_csv():
         df = pd.read_csv(StringIO(csv_content))
         
         # Handle different column name formats
-        # Google Sheets export might have: "Logged Time", "Raw Start", "Raw Task"
-        # Or: "colA", "colB", "loggedTime"
-        col_a = None
-        col_b = None
+        # Google Sheets export might have: "Logged Time", "Log Entry"
+        # Or: "colB", "loggedTime"
+        log_entry_col = None
         logged_time_col = None
         
         for col in df.columns:
             col_lower = col.lower().strip()
-            if "start" in col_lower or col_lower == "cola":
-                col_a = col
-            elif "task" in col_lower or col_lower == "colb" or "raw" in col_lower:
-                col_b = col
-            elif "logged" in col_lower or "time" in col_lower:
+            if "logged" in col_lower and "time" in col_lower:
                 logged_time_col = col
+            elif (
+                "log entry" in col_lower
+                or "entry" in col_lower
+                or "task" in col_lower
+                or "details" in col_lower
+                or "raw" in col_lower
+                or col_lower == "colb"
+            ):
+                log_entry_col = col
         
-        if col_b is None:
+        if log_entry_col is None:
             # Try to find any column that looks like task data
             for col in df.columns:
-                if col.lower() not in ["logged time", "raw start"]:
-                    col_b = col
+                if col != logged_time_col:
+                    log_entry_col = col
                     break
-        
-        if col_b is None:
-            return jsonify({"status": "error", "message": "Could not identify task column in CSV"}), 400
+
+        if log_entry_col is None:
+            return jsonify({"status": "error", "message": "Could not identify log entry column in CSV"}), 400
         
         # Process rows
         parser = TimeLogParser()
@@ -2128,15 +2348,14 @@ def import_csv():
         previous_end: Optional[datetime] = None
         
         for _, row in df.iterrows():
-            col_a_val = str(row.get(col_a, "") or "") if col_a else ""
-            col_b_val = str(row.get(col_b, "") or "")
+            log_entry_val = str(row.get(log_entry_col, "") or "")
             client_now = str(row.get(logged_time_col, "")) if logged_time_col else None
             
-            if not col_b_val or col_b_val.strip() == "":
+            if not log_entry_val or log_entry_val.strip() == "":
                 continue
             
             try:
-                parsed = parser.parse_row(col_a_val, col_b_val, client_now, previous_end)
+                parsed = parser.parse_row(log_entry_val, client_now, previous_end)
                 parsed_rows.append(parsed)
                 previous_end = parsed["end_dt"]
             except Exception as e:

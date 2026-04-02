@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import csv
+import logging
 import os
 from datetime import timedelta
+from io import BytesIO, StringIO
 from typing import Any, Dict, List, Optional
 
 import pandas as pd
@@ -19,6 +22,8 @@ from .utils import get_current_user_id
 
 
 bp = Blueprint("api", __name__)
+
+logger = logging.getLogger(__name__)
 
 
 @bp.route("/api/graph-data", endpoint="graph_data")
@@ -103,8 +108,12 @@ def get_tasks():
         try:
             sync_cloud_data(db_name, user_id, force=True)
             df = fetch_local_data(db_name, user_id)
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning(
+                "API tasks sync fallback failed user_id=%s error=%s",
+                int(user_id),
+                exc,
+            )
 
     if df.empty:
         return jsonify(
@@ -243,8 +252,12 @@ def get_tags():
         try:
             sync_cloud_data(db_name, user_id, force=True)
             df = fetch_local_data(db_name, user_id)
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning(
+                "API tags sync fallback failed user_id=%s error=%s",
+                int(user_id),
+                exc,
+            )
 
     start_date, end_date = get_period_range(selected_date, period)
     period_df = df[(df["date"] >= start_date) & (df["date"] <= end_date)] if not df.empty else pd.DataFrame()
@@ -291,6 +304,63 @@ def import_csv():
         return jsonify({"status": "error", "message": str(exc)}), 500
 
 
+@bp.route("/api/export-csv", endpoint="export_csv")
+@api_or_login_required
+def export_csv():
+    db_name = current_app.config["DB_NAME"]
+    user_id = int(getattr(g, "user_id", 0) or 0)
+
+    df = fetch_local_data(db_name, user_id)
+    headers = [
+        "start date",
+        "start time",
+        "end date",
+        "end time",
+        "task",
+        "duration",
+        "special tags",
+        "urgent",
+        "important",
+    ]
+    output = StringIO()
+    writer = csv.writer(output)
+    writer.writerow(headers)
+
+    if not df.empty:
+        for _, row in df.iterrows():
+            start_dt = row.get("start_datetime")
+            end_dt = row.get("end_datetime")
+            if pd.isna(start_dt) or pd.isna(end_dt):
+                continue
+            duration_hours = round(float(row.get("duration", 0) or 0) / 60.0, 2)
+            special_tags = row.get("special_tags")
+            if isinstance(special_tags, list):
+                tags_value = ", ".join([t for t in special_tags if t])
+            else:
+                tags_value = ""
+            writer.writerow(
+                [
+                    start_dt.strftime("%Y-%m-%d"),
+                    start_dt.strftime("%I:%M %p"),
+                    end_dt.strftime("%Y-%m-%d"),
+                    end_dt.strftime("%I:%M %p"),
+                    row.get("task", ""),
+                    duration_hours,
+                    tags_value,
+                    "Yes" if row.get("urgent") else "No",
+                    "Yes" if row.get("important") else "No",
+                ]
+            )
+
+    buffer = BytesIO(output.getvalue().encode("utf-8"))
+    return send_file(
+        buffer,
+        mimetype="text/csv",
+        as_attachment=True,
+        download_name="time-tracker-export.csv",
+    )
+
+
 @bp.route("/download-db", endpoint="download_db")
 def download_db():
     try:
@@ -304,8 +374,12 @@ def download_db():
         if resolved_user_id is not None:
             try:
                 sync_cloud_data(db_name, int(resolved_user_id))
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.warning(
+                    "DB download sync failed user_id=%s error=%s",
+                    int(resolved_user_id),
+                    exc,
+                )
         return send_file(db_name, as_attachment=True)
     except Exception as exc:
         return f"Error downloading DB: {exc}", 500

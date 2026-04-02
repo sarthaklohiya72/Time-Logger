@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import json
+import logging
 import os
 import time
 from datetime import timedelta
@@ -10,7 +11,7 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 import pandas as pd
-from flask import Blueprint, current_app, make_response, redirect, render_template, request, send_file, url_for
+from flask import Blueprint, current_app, make_response, redirect, render_template, request, send_file, session, url_for
 
 from ..core.admins import is_admin_email
 from ..core.dates import get_period_range, parse_date_param, parse_period_param
@@ -27,6 +28,8 @@ from .utils import get_current_user_id
 
 
 bp = Blueprint("main", __name__)
+
+logger = logging.getLogger(__name__)
 
 _DEFAULT_ICON_BYTES = base64.b64decode(
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIW2P8z8BQDwAF/wJ+q9QKJwAAAABJRU5ErkJggg=="
@@ -69,15 +72,25 @@ def settings():
         "display_name": display_name(user_row),
         "role": (row_value(user_row, "role") if user_row else "user"),
     }
+    profile_info = {
+        "username": row_value(user_row, "username") if user_row else "",
+        "email": row_value(user_row, "email") if user_row else "",
+        "user_id": row_value(user_row, "user_id") if user_row else "",
+        "name": row_value(user_row, "name") if user_row else "",
+    }
 
     return render_template(
         "settings.html",
         settings=current,
         current_user=current_user,
+        profile_info=profile_info,
         env_sheety=env_sheety,
         is_admin=is_admin,
         icon_error=request.args.get("icon_error"),
         icon_success=request.args.get("icon_success"),
+        profile_error=session.pop("profile_error", None),
+        profile_success=session.pop("profile_success", None),
+        pending_email=session.get("pending_email_new"),
     )
 
 
@@ -119,8 +132,12 @@ def dashboard():
         try:
             sync_cloud_data(db_name, user_id, force=True)
             df = fetch_local_data(db_name, user_id)
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning(
+                "Dashboard sync fallback failed user_id=%s error=%s",
+                int(user_id),
+                exc,
+            )
 
     start_date, end_date = get_period_range(selected_date, period)
     period_df = df[(df["date"] >= start_date) & (df["date"] <= end_date)] if not df.empty else pd.DataFrame()
@@ -200,8 +217,8 @@ def dashboard():
     if expected and get_user_count(db_name) <= 1:
         try:
             resp.set_cookie("tt_token", expected, httponly=True, samesite="Lax")
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("Failed to set tt_token cookie error=%s", exc)
 
     return resp
 

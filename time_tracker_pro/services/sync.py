@@ -87,25 +87,20 @@ def sync_cloud_data(db_name: str, user_id: int, force: bool = False) -> None:
         previous_end: Optional[datetime] = None
 
         for _, row in cloud_df.iterrows():
-            col_a = row_text(
+            log_entry = row_text(
                 row,
                 (
-                    "colA",
-                    "startTime",
-                    "rawStart",
-                    "start_time",
-                    "start time",
-                ),
-            )
-            col_b = row_text(
-                row,
-                (
-                    "colB",
+                    "logEntry",
+                    "log_entry",
+                    "log entry",
+                    "entry",
                     "taskDetails",
-                    "rawTask",
                     "task",
                     "task_details",
                     "task details",
+                    "rawTask",
+                    "raw_task",
+                    "colB",
                 ),
             )
             client_now = row_text(
@@ -117,7 +112,18 @@ def sync_cloud_data(db_name: str, user_id: int, force: bool = False) -> None:
                 ),
             )
 
-            parsed = parser.parse_row(col_a, col_b, client_now, previous_end)
+            try:
+                parsed = parser.parse_row(log_entry, client_now, previous_end)
+            except Exception as exc:
+                logger.warning(
+                    "Skipping invalid row during cloud sync user_id=%s logged_time=%s log_entry=%r error=%s",
+                    int(user_id),
+                    client_now,
+                    log_entry,
+                    exc,
+                )
+                continue
+
             parsed_rows.append(parsed)
             previous_end = parsed["end_dt"]
 
