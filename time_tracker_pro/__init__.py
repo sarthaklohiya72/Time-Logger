@@ -7,10 +7,11 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 from dotenv import load_dotenv
-from flask import Flask
+from flask import Flask, url_for
 
 from .core.time_utils import human_hours
 from .db import init_db
+from .repositories.app_settings import get_app_setting
 
 
 def create_app(config_overrides: Optional[Dict[str, Any]] = None) -> Flask:
@@ -53,5 +54,20 @@ def create_app(config_overrides: Optional[Dict[str, Any]] = None) -> Flask:
     app.register_blueprint(admin_bp)
     app.register_blueprint(api_bp)
     app.register_blueprint(main_bp)
+
+    def _icon_version() -> str:
+        try:
+            return get_app_setting(app.config["DB_NAME"], "app_icon_version") or "1"
+        except Exception:
+            return "1"
+
+    @app.context_processor
+    def inject_pwa_assets():
+        version = _icon_version()
+        return {
+            "pwa_manifest_url": url_for("main.manifest"),
+            "pwa_icon_url": url_for("main.app_icon", v=version),
+            "pwa_icon_version": version,
+        }
 
     return app

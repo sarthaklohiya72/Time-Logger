@@ -3,6 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#F7CF6B">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Time Tracker Pro">
+    <meta name="mobile-web-app-capable" content="yes">
+    <link rel="manifest" href="{{ pwa_manifest_url }}">
+    <link rel="icon" href="{{ pwa_icon_url }}" type="image/png">
+    <link rel="apple-touch-icon" href="{{ pwa_icon_url }}">
     <title>Settings - Time Tracker Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -41,6 +49,16 @@
     </header>
 
     <main class="max-w-3xl mx-auto px-6 py-10">
+        {% if icon_error %}
+            <div class="px-4 py-3 rounded-2xl bg-red-50 border border-red-200 text-sm text-red-700 mb-4">
+                {{ icon_error }}
+            </div>
+        {% endif %}
+        {% if icon_success %}
+            <div class="px-4 py-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-sm text-emerald-700 mb-4">
+                {{ icon_success }}
+            </div>
+        {% endif %}
         <div class="luxury-card rounded-3xl p-8">
             <h2 class="text-xl font-semibold text-gray-900">Sheety Sync</h2>
             <p class="text-sm text-gray-600 mt-1">Each user can connect their own Sheety project. This keeps data separate across users.</p>
@@ -65,6 +83,26 @@
                 </button>
             </form>
         </div>
+        {% if is_admin %}
+            <div class="luxury-card rounded-3xl p-8 mt-6">
+                <h2 class="text-xl font-semibold text-gray-900">App Icon</h2>
+                <p class="text-sm text-gray-600 mt-1">Change the icon shown when users save the web app to their home screen.</p>
+                <div class="mt-4 flex items-center gap-4">
+                    <img src="{{ pwa_icon_url }}" alt="Current app icon" class="w-16 h-16 rounded-2xl border border-slate-200 bg-white shadow-sm">
+                    <div class="text-xs text-gray-500">Recommended size: 512×512 PNG.</div>
+                </div>
+                <form method="POST" action="{{ url_for('main.update_app_icon') }}" enctype="multipart/form-data" class="mt-6 space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Upload new icon (PNG)</label>
+                        <input type="file" name="icon" accept="image/png" class="w-full px-4 py-3 rounded-2xl bg-white/80 border border-[rgba(148,126,86,0.35)] focus:outline-none focus:ring-2 focus:ring-amber-300 text-base" required />
+                    </div>
+                    <p class="text-xs text-gray-500">After updating, remove and re-add the app on iOS to refresh the icon.</p>
+                    <button type="submit" class="w-full py-3 rounded-2xl bg-gray-900 text-amber-300 font-semibold shadow-lg active:scale-[0.99] transition-transform">
+                        Update App Icon
+                    </button>
+                </form>
+            </div>
+        {% endif %}
     </main>
 </body>
 </html>

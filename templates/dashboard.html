@@ -3,6 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#F7CF6B">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Time Tracker Pro">
+    <meta name="mobile-web-app-capable" content="yes">
+    <link rel="manifest" href="{{ pwa_manifest_url }}">
+    <link rel="icon" href="{{ pwa_icon_url }}" type="image/png">
+    <link rel="apple-touch-icon" href="{{ pwa_icon_url }}">
     <title>Time Tracker Pro</title>
     <script src="https://cdn.tailwindcss.com" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
@@ -395,7 +403,7 @@
             {% set top_quad_key = 'q4' %}
         {% endif %}
         <div class="md:hidden mb-6">
-            <div class="luxury-card rounded-2xl p-5 flex items-center justify-between cursor-pointer" data-filter="{{ top_quad_key }}" data-title="{{ top_quad_label }}" role="button">
+            <div class="luxury-card rounded-2xl p-5 flex items-center justify-between cursor-pointer" data-filter="{{ top_quad_key }}" data-title="{{ top_quad_label }}" data-chart="tasks" role="button">
                 <div>
                     <div class="text-xs font-semibold tracking-[0.16em] text-gray-400 uppercase">Dominant quadrant</div>
                     <div class="mt-2 text-2xl font-light text-gray-900">{{ top_quad_hours }}h</div>
@@ -407,7 +415,7 @@
             </div>
         </div>
         <div class="hidden md:grid grid-cols-3 gap-6 mb-12">
-            <div class="luxury-card rounded-2xl p-8 flex flex-col justify-between cursor-pointer" data-action="full-period" role="button">
+            <div class="luxury-card rounded-2xl p-8 flex flex-col justify-between cursor-pointer" data-filter="all" data-title="Full {{ period | title }} Log" data-chart="tasks" role="button">
                 <div class="flex items-center justify-between mb-4">
                     <div>
                         <div class="text-xs font-semibold tracking-[0.16em] text-gray-400 uppercase">Period total</div>
@@ -422,11 +430,12 @@
                 </div>
                 <div class="mt-3 text-xs text-gray-500">{{ current_month }} · {{ period | title }} view totals.</div>
             </div>
-            <div class="luxury-card rounded-2xl p-8 flex flex-col justify-between {% if tags.labels %}cursor-pointer{% endif %}" {% if tags.labels %}data-filter="tag" data-title="{{ top_tag_label }}" data-tag="{{ top_tag_label }}" role="button"{% endif %}>
+            <div class="luxury-card rounded-2xl p-8 flex flex-col justify-between {% if tags.labels %}cursor-pointer{% endif %}" {% if tags.labels %}data-filter="tag" data-title="{{ top_tag_label }}" data-tag="{{ top_tag_label }}" data-chart="tasks" role="button"{% endif %}>
                 <div class="flex items-center justify-between mb-4">
                     <div>
                         <div class="text-xs font-semibold tracking-[0.16em] text-gray-400 uppercase">Top category</div>
                         <div class="mt-2 text-3xl font-light text-gray-900">{{ top_tag_hours | round(1) }}h</div>
+                        <div class="mt-1 text-xs text-gray-500">{{ top_tag_pct }}% of period</div>
                     </div>
                     <span class="inline-flex h-9 px-3 items-center rounded-full bg-[#FDF3DF] text-[11px] font-medium tracking-wide text-[#92400E] border border-amber-200">
                         {{ top_tag_label }}
@@ -437,7 +446,7 @@
                 </div>
                 <div class="mt-3 text-xs text-gray-500">{{ top_tag_pct }}% of logged time this period.</div>
             </div>
-            <div class="luxury-card rounded-2xl p-8 flex flex-col justify-between cursor-pointer" data-filter="{{ top_quad_key }}" data-title="{{ top_quad_label }}" role="button">
+            <div class="luxury-card rounded-2xl p-8 flex flex-col justify-between cursor-pointer" data-filter="{{ top_quad_key }}" data-title="{{ top_quad_label }}" data-chart="tasks" role="button">
                 <div class="flex items-center justify-between mb-4">
                     <div>
                         <div class="text-xs font-semibold tracking-[0.16em] text-gray-400 uppercase">Dominant quadrant</div>
@@ -772,7 +781,7 @@
             const periodMap = { 'day': 'Day', 'week': 'Week', 'month': 'Month' };
             const periodLabel = periodMap[period] || 'Day';
             console.log('View Full ' + periodLabel + ' clicked');
-            window.applyFilter('all', 'Full ' + periodLabel + ' Log');
+            window.applyFilter('all', 'Full ' + periodLabel + ' Log', '', 'tags');
         };
 
         window.toggleDropdown = function() {};
@@ -781,7 +790,7 @@
 
         window.viewMatrixQuadrant = function(quadrant, name) {
             console.log('Matrix quadrant clicked:', quadrant, name);
-            window.applyFilter(quadrant, name);
+            window.applyFilter(quadrant, name, '', 'tags');
         };
 
         window.getPeriodDays = function() {
@@ -891,6 +900,9 @@
                 const minPercent = typeof pluginOptions.minPercent === 'number'
                     ? pluginOptions.minPercent
                     : 0;
+                const precision = Number.isFinite(pluginOptions.precision)
+                    ? pluginOptions.precision
+                    : 1;
                 ctx.save();
                 ctx.font = `${fontWeight} ${fontSize}px ${fontFamily}`;
                 ctx.textAlign = 'center';
@@ -924,7 +936,7 @@
                         ctx.shadowOffsetY = 0;
                     }
                     const pos = element.tooltipPosition();
-                    ctx.fillText(`${pct.toFixed(1)}%`, pos.x, pos.y);
+                    ctx.fillText(`${pct.toFixed(precision)}%`, pos.x, pos.y);
                 });
                 ctx.restore();
             }
@@ -1025,8 +1037,8 @@
             }
         }
 
-        window.applyFilter = function(filterType, title, tagName = '') {
-            console.log('applyFilter called:', filterType, title, tagName);
+        window.applyFilter = function(filterType, title, tagName = '', chartMode = 'auto') {
+            console.log('applyFilter called:', filterType, title, tagName, chartMode);
             window.closeDropdown();
             const url = `/api/tasks?date=${window.currentDate}&period=${window.currentPeriod}&filter=${filterType}${tagName ? '&tag=' + encodeURIComponent(tagName) : ''}`;
 
@@ -1050,14 +1062,14 @@
                     setGlobalLoading(false);
                     window.modalSort = 'time_desc';
                     window.modalSortLabel = 'Time ↓';
-                    window.showModal(title, data, filterType);
+                    window.showModal(title, data, filterType, chartMode);
                 })
                 .catch(error => {
                     console.error('Error fetching tasks:', error);
                     setGlobalLoading(false, 'Error loading tasks: ' + error.message);
                     try {
                         const fallback = { tasks: [], total_hours: 0, total_minutes: 0, count: 0 };
-                        window.showModal(title, fallback, filterType);
+                        window.showModal(title, fallback, filterType, chartMode);
                     } catch (e) {
                         console.error('Failed to open modal fallback', e);
                     }
@@ -1169,11 +1181,12 @@
             window.attachHoverSwap();
         };
 
-        window.showModal = function(title, data, filterType) {
+        window.showModal = function(title, data, filterType, chartMode = 'auto') {
             const modal = document.getElementById('taskModal');
             if (!modal) return;
             window.modalData = data;
             window.modalFilterType = filterType;
+            window.modalChartMode = chartMode || 'auto';
             window.modalQuery = '';
             window.hiddenTags = window.hiddenTags || {};
             document.getElementById('modalTitle').textContent = title;
@@ -1415,9 +1428,9 @@
                 let values = [];
                 let colors = [];
 
-                const taskBreakdownFilters = ['all', 'q1', 'q2', 'q3', 'q4'];
-                const showTaskBreakdown = window.modalFilterType === 'tag'
-                    || taskBreakdownFilters.includes(window.modalFilterType);
+                const chartMode = window.modalChartMode || 'auto';
+                const showTaskBreakdown = chartMode === 'tasks'
+                    || (chartMode === 'auto' && window.modalFilterType === 'tag');
 
                 if (showTaskBreakdown) {
                     const taskGroups = {};
@@ -1456,8 +1469,8 @@
                     return s;
                 });
                 const isModalMobile = window.matchMedia('(max-width: 767px)').matches;
-                const showPercentInChart = window.modalFilterType !== 'tag';
-                const showMobileLegend = isModalMobile && showPercentInChart;
+                const showPercentInChart = true;
+                const showMobileLegend = isModalMobile;
 
                 const mobileLegendEl = document.getElementById('mobileModalLegend');
                 if (mobileLegendEl) {
@@ -1526,14 +1539,15 @@
                         plugins: {
                             percentLabelPlugin: {
                                 display: showPercentInChart,
-                                fontSize: isModalMobile ? 11 : 12,
+                                fontSize: isModalMobile ? 10 : 11,
                                 fontFamily: 'Inter',
                                 fontWeight: '600',
                                 color: '#111827',
                                 lightColor: '#FFFFFF',
                                 autoColor: true,
                                 shadow: true,
-                                minPercent: 0
+                                minPercent: 3,
+                                precision: 0
                             },
                             legend: {
                                 display: !isModalMobile,
@@ -1721,8 +1735,9 @@
                     const filter = card.dataset.filter;
                     const title = card.dataset.title || '';
                     const tag = card.dataset.tag || '';
+                    const chart = card.dataset.chart || 'auto';
                     if (filter) {
-                        window.applyFilter(filter, title, tag);
+                        window.applyFilter(filter, title, tag, chart);
                     }
                 });
             });

@@ -1,26 +1,42 @@
 from __future__ import annotations
 
+import base64
+import json
 import os
+import time
 from datetime import timedelta
+from io import BytesIO
+from pathlib import Path
 from typing import Any, Dict, List
 
 import pandas as pd
-from flask import Blueprint, current_app, make_response, redirect, render_template, request, url_for
+from flask import Blueprint, current_app, make_response, redirect, render_template, request, send_file, url_for
 
 from ..core.admins import is_admin_email
 from ..core.dates import get_period_range, parse_date_param, parse_period_param
 from ..core.rows import display_name, row_value
 from ..core.tags import primary_special_tag
+from ..repositories.app_settings import get_app_setting, upsert_app_setting
 from ..repositories.logs import fetch_local_data
 from ..repositories.settings import get_user_settings, upsert_user_settings
 from ..repositories.users import get_user_by_id, get_user_count
 from ..services.matrix import get_matrix_stats
 from ..services.sync import sync_cloud_data
-from .decorators import login_required
+from .decorators import admin_required, login_required
 from .utils import get_current_user_id
 
 
 bp = Blueprint("main", __name__)
+
+_DEFAULT_ICON_BYTES = base64.b64decode(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIW2P8z8BQDwAF/wJ+q9QKJwAAAABJRU5ErkJggg=="
+)
+
+
+def _icon_storage_path() -> Path:
+    icon_dir = Path(current_app.instance_path) / "pwa"
+    icon_dir.mkdir(parents=True, exist_ok=True)
+    return icon_dir / "app-icon.png"
 
 
 @bp.route("/settings", methods=["GET", "POST"], endpoint="settings")
@@ -60,7 +76,29 @@ def settings():
         current_user=current_user,
         env_sheety=env_sheety,
         is_admin=is_admin,
+        icon_error=request.args.get("icon_error"),
+        icon_success=request.args.get("icon_success"),
     )
+
+
+@bp.route("/admin/app-icon", methods=["POST"], endpoint="update_app_icon")
+@admin_required
+def update_app_icon():
+    db_name = current_app.config["DB_NAME"]
+    file = request.files.get("icon")
+    if not file or not file.filename:
+        return redirect(url_for("main.settings", icon_error="Please choose a PNG icon to upload."))
+    if file.mimetype not in {"image/png", "image/x-png"}:
+        return redirect(url_for("main.settings", icon_error="Icon must be a PNG file."))
+    data = file.read()
+    if not data:
+        return redirect(url_for("main.settings", icon_error="Uploaded icon file was empty."))
+    if len(data) > 5 * 1024 * 1024:
+        return redirect(url_for("main.settings", icon_error="Icon is too large (max 5MB)."))
+    icon_path = _icon_storage_path()
+    icon_path.write_bytes(data)
+    upsert_app_setting(db_name, "app_icon_version", str(int(time.time())))
+    return redirect(url_for("main.settings", icon_success="App icon updated. Re-add the app to refresh."))
 
 
 @bp.route("/", endpoint="dashboard")
@@ -166,6 +204,42 @@ def dashboard():
             pass
 
     return resp
+
+
+@bp.route("/manifest.webmanifest", endpoint="manifest")
+def manifest():
+    db_name = current_app.config["DB_NAME"]
+    version = get_app_setting(db_name, "app_icon_version") or "1"
+    icon_url = url_for("main.app_icon", v=version)
+    payload = {
+        "name": "Time Tracker Pro",
+        "short_name": "Time Tracker",
+        "start_url": "/",
+        "scope": "/",
+        "display": "standalone",
+        "background_color": "#F7F1E6",
+        "theme_color": "#F7CF6B",
+        "icons": [
+            {
+                "src": icon_url,
+                "sizes": "512x512",
+                "type": "image/png",
+                "purpose": "any"
+            }
+        ],
+    }
+    return current_app.response_class(
+        json.dumps(payload),
+        mimetype="application/manifest+json",
+    )
+
+
+@bp.route("/app-icon.png", endpoint="app_icon")
+def app_icon():
+    icon_path = _icon_storage_path()
+    if icon_path.exists():
+        return send_file(icon_path, mimetype="image/png")
+    return send_file(BytesIO(_DEFAULT_ICON_BYTES), mimetype="image/png")
 
 
 @bp.route("/graphs", endpoint="graphs")
