@@ -364,53 +364,98 @@
             {% endif %}
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-            <div class="luxury-card rounded-2xl p-8 flex flex-col justify-between">
+        {% set top_tag_label = tags.labels[0] if tags.labels else 'No tags' %}
+        {% set top_tag_hours = tags.data[0] if tags.data else 0 %}
+        {% set total_tag_hours = (tags.data | sum) if tags.data else 0 %}
+        {% set top_tag_pct = ((top_tag_hours / total_tag_hours) * 100) | round(1) if total_tag_hours else 0 %}
+        {% set top_quad_label = 'Critical' %}
+        {% set top_quad_sub = 'Important & Urgent' %}
+        {% set top_quad_pct = matrix.q1.pct %}
+        {% set top_quad_hours = matrix.q1.hours %}
+        {% set top_quad_key = 'q1' %}
+        {% if matrix.q2.pct > top_quad_pct %}
+            {% set top_quad_label = 'Growth' %}
+            {% set top_quad_sub = 'Important & Not Urgent' %}
+            {% set top_quad_pct = matrix.q2.pct %}
+            {% set top_quad_hours = matrix.q2.hours %}
+            {% set top_quad_key = 'q2' %}
+        {% endif %}
+        {% if matrix.q3.pct > top_quad_pct %}
+            {% set top_quad_label = 'Drudgery' %}
+            {% set top_quad_sub = 'Urgent & Not Important' %}
+            {% set top_quad_pct = matrix.q3.pct %}
+            {% set top_quad_hours = matrix.q3.hours %}
+            {% set top_quad_key = 'q3' %}
+        {% endif %}
+        {% if matrix.q4.pct > top_quad_pct %}
+            {% set top_quad_label = 'Waste' %}
+            {% set top_quad_sub = 'Not Urgent & Not Important' %}
+            {% set top_quad_pct = matrix.q4.pct %}
+            {% set top_quad_hours = matrix.q4.hours %}
+            {% set top_quad_key = 'q4' %}
+        {% endif %}
+        <div class="md:hidden mb-6">
+            <div class="luxury-card rounded-2xl p-5 flex items-center justify-between cursor-pointer" data-filter="{{ top_quad_key }}" data-title="{{ top_quad_label }}" role="button">
+                <div>
+                    <div class="text-xs font-semibold tracking-[0.16em] text-gray-400 uppercase">Dominant quadrant</div>
+                    <div class="mt-2 text-2xl font-light text-gray-900">{{ top_quad_hours }}h</div>
+                    <div class="text-[11px] text-gray-500 mt-1">{{ top_quad_sub }} · {{ top_quad_pct }}%</div>
+                </div>
+                <span class="inline-flex h-9 px-3 items-center rounded-full bg-[#ECFDF3] text-[11px] font-medium tracking-wide text-[#047857] border border-emerald-200">
+                    {{ top_quad_label }}
+                </span>
+            </div>
+        </div>
+        <div class="hidden md:grid grid-cols-3 gap-6 mb-12">
+            <div class="luxury-card rounded-2xl p-8 flex flex-col justify-between cursor-pointer" data-action="full-period" role="button">
                 <div class="flex items-center justify-between mb-4">
                     <div>
-                        <div class="text-xs font-semibold tracking-[0.16em] text-gray-400 uppercase">Focus Time</div>
-                        <div class="mt-2 text-3xl font-light text-gray-900"><span class="js-hover-hours" data-hours="{{ matrix.q2.hours }}">{{ matrix.q2.hours }}h</span></div>
+                        <div class="text-xs font-semibold tracking-[0.16em] text-gray-400 uppercase">Period total</div>
+                        <div class="mt-2 text-3xl font-light text-gray-900"><span class="js-hover-hours" data-hours="{{ matrix.total_hours }}">{{ matrix.total_hours }}h</span></div>
                     </div>
                     <span class="inline-flex h-9 px-3 items-center rounded-full bg-[#111827] text-[11px] font-medium tracking-wide text-[#F8D574] border border-[rgba(248,213,116,0.35)]">
-                        Deep work
+                        All logged
                     </span>
                 </div>
                 <div class="w-full h-2 rounded-full bg-[#E7D8C2] overflow-hidden">
-                    <div class="h-full rounded-full bg-gradient-to-r from-[#111827] via-[#111827] to-[#F5B826]" style="width: {{ matrix.q2.pct }}%"></div>
+                    <div class="h-full rounded-full bg-gradient-to-r from-[#111827] via-[#111827] to-[#F5B826]" style="width: 100%"></div>
                 </div>
-                <div class="mt-3 text-xs text-gray-500">You spent {{ matrix.q2.pct }}% of your time on important, non‑urgent work.</div>
+                <div class="mt-3 text-xs text-gray-500">{{ current_month }} · {{ period | title }} view totals.</div>
             </div>
-            <div class="luxury-card rounded-2xl p-8 flex flex-col justify-between">
+            <div class="luxury-card rounded-2xl p-8 flex flex-col justify-between {% if tags.labels %}cursor-pointer{% endif %}" {% if tags.labels %}data-filter="tag" data-title="{{ top_tag_label }}" data-tag="{{ top_tag_label }}" role="button"{% endif %}>
                 <div class="flex items-center justify-between mb-4">
                     <div>
-                        <div class="text-xs font-semibold tracking-[0.16em] text-gray-400 uppercase">Critical Load</div>
-                        <div class="mt-2 text-3xl font-light text-gray-900"><span class="js-hover-hours" data-hours="{{ matrix.q1.hours }}">{{ matrix.q1.hours }}h</span></div>
+                        <div class="text-xs font-semibold tracking-[0.16em] text-gray-400 uppercase">Top category</div>
+                        <div class="mt-2 text-3xl font-light text-gray-900">{{ top_tag_hours | round(1) }}h</div>
                     </div>
                     <span class="inline-flex h-9 px-3 items-center rounded-full bg-[#FDF3DF] text-[11px] font-medium tracking-wide text-[#92400E] border border-amber-200">
-                        Urgent & important
+                        {{ top_tag_label }}
                     </span>
                 </div>
                 <div class="w-full h-2 rounded-full bg-[#E7D8C2] overflow-hidden">
-                    <div class="h-full rounded-full bg-gradient-to-r from-[#F97316] via-[#F59E0B] to-[#FACC15]" style="width: {{ matrix.q1.pct }}%"></div>
+                    <div class="h-full rounded-full bg-gradient-to-r from-[#F97316] via-[#F59E0B] to-[#FACC15]" style="width: {{ top_tag_pct }}%"></div>
                 </div>
-                <div class="mt-3 text-xs text-gray-500">Represents {{ matrix.q1.pct }}% of your tracked time this period.</div>
+                <div class="mt-3 text-xs text-gray-500">{{ top_tag_pct }}% of logged time this period.</div>
             </div>
-            <div class="luxury-card rounded-2xl p-8 flex flex-col justify-between">
+            <div class="luxury-card rounded-2xl p-8 flex flex-col justify-between cursor-pointer" data-filter="{{ top_quad_key }}" data-title="{{ top_quad_label }}" role="button">
                 <div class="flex items-center justify-between mb-4">
                     <div>
-                        <div class="text-xs font-semibold tracking-[0.16em] text-gray-400 uppercase">Aligned Time</div>
-                        <div class="mt-2 text-3xl font-light text-gray-900">{{ ((matrix.q2.pct + matrix.q1.pct) / 2) | round(1) }}<span class="text-sm text-gray-400 font-normal ml-1">%</span></div>
+                        <div class="text-xs font-semibold tracking-[0.16em] text-gray-400 uppercase">Dominant quadrant</div>
+                        <div class="mt-2 text-3xl font-light text-gray-900">{{ top_quad_hours }}h</div>
                     </div>
+                    <span class="inline-flex h-9 px-3 items-center rounded-full bg-[#ECFDF3] text-[11px] font-medium tracking-wide text-[#047857] border border-emerald-200">
+                        {{ top_quad_label }}
+                    </span>
                 </div>
                 <div class="w-full h-2 rounded-full bg-[#E7D8C2] overflow-hidden">
-                    <div class="h-full rounded-full bg-gradient-to-r from-[#22C55E] via-[#A3E635] to-[#FACC15]" style="width: {{ ((matrix.q2.pct + matrix.q1.pct) / 2) | round(1) }}%"></div>
+                    <div class="h-full rounded-full bg-gradient-to-r from-[#22C55E] via-[#A3E635] to-[#FACC15]" style="width: {{ top_quad_pct }}%"></div>
                 </div>
-                <div class="mt-3 text-xs text-gray-500">Average of growth and critical work share – closer to 100% means your calendar matches your priorities.</div>
+                <div class="mt-3 text-xs text-gray-500">{{ top_quad_sub }} · {{ top_quad_pct }}% share.</div>
             </div>
         </div>
 
         <!-- Main Content Grid -->
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-8 md:mt-0">
 
             <!-- Priority Matrix - Extended Eisenhower Matrix -->
             <div class="lg:col-span-2" id="matrix">
@@ -577,10 +622,10 @@
                     </div>
                     <div class="relative w-full flex-1 flex flex-col items-center justify-center min-h-0" role="img" aria-label="Time spent by tag category">
                         {% if tags.labels %}
-                        <div class="w-full h-[10rem] md:h-auto md:flex-1 md:min-h-[18rem] lg:min-h-[22rem] flex items-center justify-center">
+                        <div class="w-full h-[14rem] md:h-auto md:flex-1 md:min-h-[18rem] lg:min-h-[22rem] flex items-center justify-center">
                             <canvas id="tagChart" aria-hidden="true"></canvas>
                         </div>
-                        <div id="mobileTagLegend" class="mt-3 md:hidden flex flex-wrap gap-2 justify-center text-[10px] text-gray-600 px-2"></div>
+                        <div id="mobileTagLegend" class="mt-3 md:hidden flex flex-wrap gap-2 justify-center text-[11px] text-gray-700 px-2"></div>
                         {% else %}
                         <div class="text-center py-12">
                             <div class="text-5xl text-gray-200 mb-3">∅</div>
@@ -644,8 +689,8 @@
             </div>
             <div id="modalTools" class="mb-4 flex items-center justify-end"></div>
             <div id="modalStats" class="mb-6 grid grid-cols-3 gap-4"></div>
-            <div id="modalChart" class="mb-6" style="height: 300px;"></div>
-            <div id="modalTasks" class="space-y-3"></div>
+            <div id="modalChart" class="mb-12 md:mb-6"></div>
+            <div id="modalTasks" class="mt-6 md:mt-0 space-y-3"></div>
         </div>
     </div>
 
@@ -805,6 +850,86 @@
             return window.ensureFinite(h).toFixed(decimals);
         };
 
+        const parseColor = (value) => {
+            if (!value) return null;
+            const raw = String(value).trim();
+            const hex = raw.match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
+            if (hex) {
+                const hexValue = hex[1];
+                const full = hexValue.length === 3
+                    ? hexValue.split('').map(c => c + c).join('')
+                    : hexValue;
+                const intVal = parseInt(full, 16);
+                return [(intVal >> 16) & 255, (intVal >> 8) & 255, intVal & 255];
+            }
+            const rgb = raw.match(/^rgba?\((\d+),\s*(\d+),\s*(\d+)/i);
+            if (rgb) return [Number(rgb[1]), Number(rgb[2]), Number(rgb[3])];
+            return null;
+        };
+
+        const getContrastColor = (value, darkColor, lightColor) => {
+            const rgb = parseColor(value);
+            if (!rgb) return darkColor;
+            const [r, g, b] = rgb;
+            const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+            return luminance > 0.62 ? darkColor : lightColor;
+        };
+
+        const percentLabelPlugin = {
+            id: 'percentLabelPlugin',
+            afterDraw(chart, args, pluginOptions) {
+                if (!pluginOptions || pluginOptions.display === false) return;
+                const dataset = chart.data.datasets[0];
+                if (!dataset) return;
+                const data = dataset.data || [];
+                const total = data.reduce((sum, v) => sum + (Number(v) || 0), 0);
+                if (!total) return;
+                const ctx = chart.ctx;
+                const fontSize = pluginOptions.fontSize || 11;
+                const fontFamily = pluginOptions.fontFamily || 'Inter';
+                const fontWeight = pluginOptions.fontWeight || '600';
+                const minPercent = typeof pluginOptions.minPercent === 'number'
+                    ? pluginOptions.minPercent
+                    : 0;
+                ctx.save();
+                ctx.font = `${fontWeight} ${fontSize}px ${fontFamily}`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                const meta = chart.getDatasetMeta(0);
+                const darkColor = pluginOptions.color || '#111827';
+                const lightColor = pluginOptions.lightColor || '#FFFFFF';
+                const useAutoColor = pluginOptions.autoColor === true;
+                const shadowEnabled = pluginOptions.shadow !== false;
+                meta.data.forEach((element, idx) => {
+                    if (!element) return;
+                    if (typeof chart.getDataVisibility === 'function' && !chart.getDataVisibility(idx)) return;
+                    const value = Number(data[idx] || 0);
+                    if (!value) return;
+                    const pct = (value / total) * 100;
+                    if (pct < minPercent) return;
+                    const bg = Array.isArray(dataset.backgroundColor)
+                        ? dataset.backgroundColor[idx]
+                        : dataset.backgroundColor;
+                    const textColor = useAutoColor
+                        ? getContrastColor(bg, darkColor, lightColor)
+                        : darkColor;
+                    ctx.fillStyle = textColor;
+                    if (shadowEnabled && textColor === lightColor) {
+                        ctx.shadowColor = 'rgba(0, 0, 0, 0.35)';
+                        ctx.shadowBlur = 3;
+                        ctx.shadowOffsetY = 1;
+                    } else {
+                        ctx.shadowColor = 'transparent';
+                        ctx.shadowBlur = 0;
+                        ctx.shadowOffsetY = 0;
+                    }
+                    const pos = element.tooltipPosition();
+                    ctx.fillText(`${pct.toFixed(1)}%`, pos.x, pos.y);
+                });
+                ctx.restore();
+            }
+        };
+
         const TAG_COLOR_MAP = {
             'Work': '#10B981',
             'Necessity': '#F59E0B',
@@ -946,6 +1071,10 @@
             const tasks = window.modalData.tasks || [];
             const filterType = window.modalFilterType || 'all';
             const sortKey = window.modalSort || 'time_desc';
+            const query = String(window.modalQuery || '').trim().toLowerCase();
+            const queryParts = query
+                ? query.split(',').map(s => String(s || '').trim().toLowerCase()).filter(Boolean)
+                : [];
             const timeToMinutes = (value) => {
                 if (!value) return 0;
                 const parts = String(value).trim().match(/(\d{1,2})(?::(\d{2}))?\s*(AM|PM)?/i);
@@ -968,6 +1097,23 @@
             const active = Object.keys(hidden).length
                 ? tasks.filter(t => !hidden[getKey(t)])
                 : tasks.slice();
+            const matchesTerm = (t, term) => {
+                const clean = String(term || '').trim().toLowerCase();
+                if (!clean) return true;
+                if (clean === 'imp' || clean === 'important') {
+                    return Number(t.important) > 0;
+                }
+                if (clean === 'urg' || clean === 'urgent') {
+                    return Number(t.urgent) > 0;
+                }
+                const taskText = String(t.task || '').toLowerCase();
+                const tagText = String(formatTagNames(t.tag) || '').toLowerCase();
+                const rawTag = String(t.tag || '').toLowerCase();
+                return taskText.includes(clean) || tagText.includes(clean) || rawTag.includes(clean);
+            };
+            const searched = queryParts.length
+                ? active.filter(t => queryParts.some(part => matchesTerm(t, part)))
+                : active;
             const sorters = {
                 time_asc: (a, b) => timeToMinutes(a.start_time) - timeToMinutes(b.start_time),
                 time_desc: (a, b) => timeToMinutes(b.start_time) - timeToMinutes(a.start_time),
@@ -980,13 +1126,13 @@
                 imp_desc: (a, b) => Number(b.important) - Number(a.important),
                 urg_desc: (a, b) => Number(b.urgent) - Number(a.urgent)
             };
-            active.sort(sorters[sortKey] || sorters.time_desc);
-            if (active.length === 0) {
+            searched.sort(sorters[sortKey] || sorters.time_desc);
+            if (searched.length === 0) {
                 container.innerHTML = '<div class="text-center py-8 text-gray-400">No tasks found</div>';
                 return;
             }
             let html = '';
-            active.forEach(task => {
+            searched.forEach(task => {
                 const dur = Number(task.duration || 0);
                 const durText = hoursToHuman(isNaN(dur) ? 0 : dur);
                 const badges = [];
@@ -1028,6 +1174,7 @@
             if (!modal) return;
             window.modalData = data;
             window.modalFilterType = filterType;
+            window.modalQuery = '';
             window.hiddenTags = window.hiddenTags || {};
             document.getElementById('modalTitle').textContent = title;
 
@@ -1178,7 +1325,7 @@
                 };
             }
             const chartContainer = document.getElementById('modalChart');
-            chartContainer.innerHTML = '<canvas id="filterChart"></canvas>';
+            chartContainer.innerHTML = '<div class="relative w-full" style="height: 280px;"><canvas id="filterChart" class="w-full h-full"></canvas></div><div id="mobileModalLegend" class="mt-4 mb-4 md:hidden flex flex-wrap gap-2 justify-center text-[11px] text-gray-700 px-2"></div>';
             const sortLabels = {
                 time_desc: 'Time ↓',
                 time_asc: 'Time ↑',
@@ -1212,23 +1359,36 @@
             const tools = document.getElementById('modalTools');
             if (tools) {
                 tools.innerHTML = `
-                    <div class="relative">
-                        <button id="modalSortBtn" class="px-3 py-1.5 rounded-full bg-white border border-slate-200 text-xs text-gray-700 shadow-sm active:scale-[0.98] transition">
-                            Sort: <span id="modalSortLabel">${sortLabels[window.modalSort] || window.modalSortLabel || 'Time ↓'}</span>
-                        </button>
-                        <div id="modalSortMenu" class="absolute right-0 mt-2 w-44 bg-white rounded-xl shadow-2xl border border-slate-200 hidden">
-                            <div class="dropdown-item" data-key="time">Time</div>
-                            <div class="dropdown-item" data-key="duration">Duration</div>
-                            <div class="dropdown-item" data-key="task">Task</div>
-                            <div class="dropdown-item" data-key="tag">Tag</div>
-                            <div class="dropdown-item" data-key="imp">Important first</div>
-                            <div class="dropdown-item" data-key="urg">Urgent first</div>
+                    <div class="w-full flex items-center justify-between gap-2">
+                        <div class="flex-1 min-w-0">
+                            <input id="modalSearch" type="search" placeholder="Search tasks..." class="w-full px-3 py-1.5 rounded-full bg-white border border-slate-200 text-xs text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-300" />
+                        </div>
+                        <div class="relative shrink-0">
+                            <button id="modalSortBtn" class="px-3 py-1.5 rounded-full bg-white border border-slate-200 text-xs text-gray-700 shadow-sm active:scale-[0.98] transition">
+                                Sort: <span id="modalSortLabel">${sortLabels[window.modalSort] || window.modalSortLabel || 'Time ↓'}</span>
+                            </button>
+                            <div id="modalSortMenu" class="absolute right-0 mt-2 w-44 bg-white rounded-xl shadow-2xl border border-slate-200 hidden">
+                                <div class="dropdown-item" data-key="time">Time</div>
+                                <div class="dropdown-item" data-key="duration">Duration</div>
+                                <div class="dropdown-item" data-key="task">Task</div>
+                                <div class="dropdown-item" data-key="tag">Tag</div>
+                                <div class="dropdown-item" data-key="imp">Important first</div>
+                                <div class="dropdown-item" data-key="urg">Urgent first</div>
+                            </div>
                         </div>
                     </div>
                 `;
                 const btn = document.getElementById('modalSortBtn');
                 const menu = document.getElementById('modalSortMenu');
                 const label = document.getElementById('modalSortLabel');
+                const search = document.getElementById('modalSearch');
+                if (search) {
+                    search.value = String(window.modalQuery || '');
+                    search.oninput = () => {
+                        window.modalQuery = search.value;
+                        window.renderModalTasks();
+                    };
+                }
                 if (btn && menu && label) {
                     btn.onclick = () => menu.classList.toggle('hidden');
                     menu.querySelectorAll('.dropdown-item').forEach(item => {
@@ -1255,7 +1415,11 @@
                 let values = [];
                 let colors = [];
 
-                if (window.modalFilterType === 'tag') {
+                const taskBreakdownFilters = ['all', 'q1', 'q2', 'q3', 'q4'];
+                const showTaskBreakdown = window.modalFilterType === 'tag'
+                    || taskBreakdownFilters.includes(window.modalFilterType);
+
+                if (showTaskBreakdown) {
                     const taskGroups = {};
                     data.tasks.forEach(task => {
                         let key = String(task.task || '').trim();
@@ -1291,6 +1455,56 @@
                     if (!s || /^(undefined|null|none|nan)$/i.test(s)) return modalFallbackLabel;
                     return s;
                 });
+                const isModalMobile = window.matchMedia('(max-width: 767px)').matches;
+                const showPercentInChart = window.modalFilterType !== 'tag';
+                const showMobileLegend = isModalMobile && showPercentInChart;
+
+                const mobileLegendEl = document.getElementById('mobileModalLegend');
+                if (mobileLegendEl) {
+                    if (showMobileLegend) {
+                        mobileLegendEl.innerHTML = labels.map((label, idx) => {
+                            const color = colors[idx] || '#9CA3AF';
+                            return `<span class="inline-flex items-center gap-1">
+                                <span class="inline-block w-2.5 h-2.5 rounded-full" style="background:${color}"></span>
+                                ${label}
+                            </span>`;
+                        }).join('');
+                    } else {
+                        mobileLegendEl.innerHTML = '';
+                    }
+                }
+                const legendLabelOptions = {
+                    font: { family: 'Inter', size: 11, weight: '500' },
+                    padding: 14,
+                    color: '#374151',
+                    usePointStyle: true,
+                    pointStyle: 'circle'
+                };
+                const legendGenerateLabels = (chart) => {
+                    const labels = chart.data.labels || [];
+                    const values = chart.data.datasets[0]?.data || [];
+                    const meta = chart.getDatasetMeta(0);
+                    const total = values.reduce((sum, v) => sum + (Number(v) || 0), 0);
+                    return labels.map((rawLabel, idx) => {
+                        const style = meta?.controller?.getStyle
+                            ? meta.controller.getStyle(idx)
+                            : {};
+                        const baseText = String(rawLabel ?? '').trim();
+                        const safeText = baseText && !/^(undefined|null|none|nan)$/i.test(baseText)
+                            ? baseText
+                            : (window.modalFilterType === 'tag' ? 'Unspecified' : 'Waste');
+                        const labelText = safeText;
+                        return {
+                            text: labelText,
+                            fillStyle: style.backgroundColor,
+                            strokeStyle: style.borderColor,
+                            lineWidth: style.borderWidth,
+                            hidden: !chart.getDataVisibility(idx),
+                            index: idx,
+                            datasetIndex: 0
+                        };
+                    });
+                };
                 const chart = new Chart(ctx, {
                     type: 'pie',
                     data: {
@@ -1304,45 +1518,31 @@
                             hoverBorderWidth: 3
                         }]
                     },
+                    plugins: [percentLabelPlugin],
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
                         spacing: 3,
                         plugins: {
+                            percentLabelPlugin: {
+                                display: showPercentInChart,
+                                fontSize: isModalMobile ? 11 : 12,
+                                fontFamily: 'Inter',
+                                fontWeight: '600',
+                                color: '#111827',
+                                lightColor: '#FFFFFF',
+                                autoColor: true,
+                                shadow: true,
+                                minPercent: 0
+                            },
                             legend: {
+                                display: !isModalMobile,
                                 position: 'bottom',
                                 labels: {
-                                    font: { family: 'Inter', size: 11, weight: '500' },
-                                    padding: 14,
-                                    color: '#374151',
-                                    usePointStyle: true,
-                                    pointStyle: 'circle',
-                                    boxWidth: 10,
-                                    boxHeight: 10,
-                                    generateLabels: function(chart) {
-                                        const labels = chart.data.labels || [];
-                                        const data = chart.data.datasets[0]?.data || [];
-                                        const meta = chart.getDatasetMeta(0);
-                                        return labels.map((rawLabel, idx) => {
-                                            const style = meta?.controller?.getStyle
-                                                ? meta.controller.getStyle(idx)
-                                                : {};
-                                            const baseText = String(rawLabel ?? '').trim();
-                                            const safeText = baseText && !/^(undefined|null|none|nan)$/i.test(baseText)
-                                                ? baseText
-                                                : (window.modalFilterType === 'tag' ? 'Unspecified' : 'Waste');
-                                            return {
-                                                text: safeText,
-                                                fillStyle: style.backgroundColor,
-                                                strokeStyle: style.borderColor,
-                                                lineWidth: style.borderWidth,
-                                                hidden: !chart.getDataVisibility(idx),
-                                                index: idx,
-                                                datasetIndex: 0
-                                            };
-                                        });
-                                    }
+                                    ...legendLabelOptions,
+                                    pointStyle: 'circle'
                                 },
+                                generateLabels: legendGenerateLabels,
                                 onClick: function(e, legendItem, legend) {
                                     const ci = legend.chart;
                                     const index = legendItem.index;
@@ -1510,6 +1710,23 @@
                 }
             });
 
+            const summaryCards = document.querySelectorAll('[data-filter], [data-action]');
+            summaryCards.forEach(card => {
+                card.addEventListener('click', () => {
+                    const action = card.dataset.action;
+                    if (action === 'full-period') {
+                        viewFullDay();
+                        return;
+                    }
+                    const filter = card.dataset.filter;
+                    const title = card.dataset.title || '';
+                    const tag = card.dataset.tag || '';
+                    if (filter) {
+                        window.applyFilter(filter, title, tag);
+                    }
+                });
+            });
+
             // Close modal on outside click
             document.getElementById('taskModal').addEventListener('click', (e) => {
                 if (e.target.id === 'taskModal') {
@@ -1541,6 +1758,7 @@
             const tagData = JSON.parse('{{ (tags.data or []) | tojson }}');
             if (tagCtx && tagLabels.length) {
                 const tagColors = tagLabels.map((label, idx) => TAG_COLOR_MAP[label] || tagPalette[idx % tagPalette.length]);
+                const tagTotal = tagData.reduce((sum, v) => sum + Number(v || 0), 0);
                 try {
                     const tagChart = new Chart(tagCtx, {
                         type: 'doughnut',
@@ -1555,12 +1773,24 @@
                                 hoverBorderWidth: 3
                             }]
                         },
+                        plugins: [percentLabelPlugin],
                         options: {
                             responsive: true,
                             maintainAspectRatio: false,
-                            cutout: isMobile ? '70%' : '68%',
+                            cutout: isMobile ? '58%' : '64%',
                             spacing: 3,
                             plugins: {
+                                percentLabelPlugin: {
+                                    display: true,
+                                    fontSize: isMobile ? 11 : 12,
+                                    fontFamily: 'Inter',
+                                    fontWeight: '600',
+                                    color: '#111827',
+                                    lightColor: '#FFFFFF',
+                                    autoColor: true,
+                                    shadow: true,
+                                    minPercent: 0
+                                },
                                 legend: {
                                     display: !isMobile,
                                     position: 'bottom',

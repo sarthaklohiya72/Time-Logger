@@ -2220,4 +2220,4 @@ app = _create_app()
 
 if __name__ == '__main__':
     # host='0.0.0.0' allows access from other devices on the network
-    app.run(debug=True, host='0.0.0.0', port=5001)
+    app.run(debug=True, host='0.0.0.0', port=8080)
