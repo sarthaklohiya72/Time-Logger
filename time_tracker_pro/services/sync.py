@@ -11,6 +11,7 @@ import requests
 from ..core.tags import filter_special_tags
 from ..repositories.logs import replace_logs_for_user
 from ..repositories.settings import get_user_settings
+from ..repositories.sheety_accounts import get_user_api_accounts
 from ..repositories.users import get_user_count
 from .parser import TimeLogParser
 
@@ -36,39 +37,61 @@ def should_sync(user_id: int, now: Optional[datetime] = None) -> bool:
     return (current - last_ok).total_seconds() > SYNC_INTERVAL_SECONDS
 
 
-def sync_cloud_data(db_name: str, user_id: int, force: bool = False) -> None:
+def sync_cloud_data(db_name: str, user_id: int, force: bool = False) -> Optional[Dict[str, str]]:
     if os.getenv("DISABLE_CLOUD_SYNC") and not force:
         logger.info("Cloud sync disabled by env; skipping (force=%s)", force)
-        return
-
-    settings = get_user_settings(db_name, int(user_id))
-    user_url = (settings.get("sheety_endpoint") or "").strip()
-    env_url = (os.getenv(SHEETY_ENDPOINT_ENV) or "").strip()
-    allow_env_fallback = get_user_count(db_name) <= 1
-    url = user_url or (env_url if allow_env_fallback else "")
-    if not url:
-        return
-
-    headers: Dict[str, str] = {}
-    token = (settings.get("sheety_token") or "").strip()
-    if token:
-        headers["Authorization"] = f"Bearer {token}"
+        return None
 
     now = datetime.now(timezone.utc)
     if not force and not should_sync(int(user_id), now):
-        return
+        return None
+
+    failover_notice: Optional[Dict[str, str]] = None
 
     try:
-        response = requests.get(url, headers=headers, timeout=15)
-        if response.status_code == 402:
-            _LAST_SYNC_FAIL_TS_BY_USER[int(user_id)] = now - timedelta(hours=23)
-            return
-        response.raise_for_status()
-        data = response.json()
-        if "sheet1" not in data:
-            return
+        payload: Optional[Dict[str, Any]] = None
+        accounts = get_user_api_accounts(db_name, int(user_id))
+        if accounts:
+            from .sheety_failover import SheetyFailoverService
 
-        cloud_df = pd.DataFrame(data["sheet1"])
+            service = SheetyFailoverService(db_name, int(user_id))
+            success, data, error = service.make_request("GET")
+            failover_notice = service.get_failover_notification()
+            if not success:
+                _LAST_SYNC_FAIL_TS_BY_USER[int(user_id)] = now
+                logger.warning("Sheety sync failed user_id=%s error=%s", int(user_id), error)
+                return failover_notice
+            if isinstance(data, dict):
+                payload = data
+        else:
+            settings = get_user_settings(db_name, int(user_id))
+            user_url = (settings.get("sheety_endpoint") or "").strip()
+            env_url = (os.getenv(SHEETY_ENDPOINT_ENV) or "").strip()
+            allow_env_fallback = get_user_count(db_name) <= 1
+            url = user_url or (env_url if allow_env_fallback else "")
+            if not url:
+                return failover_notice
+
+            headers: Dict[str, str] = {}
+            token = (settings.get("sheety_token") or "").strip()
+            if token:
+                headers["Authorization"] = f"Bearer {token}"
+
+            response = requests.get(url, headers=headers, timeout=15)
+            if response.status_code == 402:
+                _LAST_SYNC_FAIL_TS_BY_USER[int(user_id)] = now - timedelta(hours=23)
+                return failover_notice
+            response.raise_for_status()
+            payload = response.json()
+
+        if not isinstance(payload, dict) or not payload:
+            return failover_notice
+
+        sheet_key = "sheet1" if "sheet1" in payload else next(iter(payload.keys()), None)
+        if not sheet_key:
+            return failover_notice
+
+        cloud_df = pd.DataFrame(payload.get(sheet_key) or [])
         if "id" in cloud_df.columns:
             cloud_df = cloud_df.sort_values("id")
 
@@ -87,6 +110,14 @@ def sync_cloud_data(db_name: str, user_id: int, force: bool = False) -> None:
         previous_end: Optional[datetime] = None
 
         for _, row in cloud_df.iterrows():
+            sheety_id = row.get("id")
+            if isinstance(sheety_id, float) and pd.isna(sheety_id):
+                sheety_id = None
+            elif sheety_id is not None:
+                try:
+                    sheety_id = int(sheety_id)
+                except (TypeError, ValueError):
+                    sheety_id = None
             log_entry = row_text(
                 row,
                 (
@@ -124,6 +155,8 @@ def sync_cloud_data(db_name: str, user_id: int, force: bool = False) -> None:
                 )
                 continue
 
+            if sheety_id is not None:
+                parsed["sheety_id"] = sheety_id
             parsed_rows.append(parsed)
             previous_end = parsed["end_dt"]
 
@@ -148,22 +181,29 @@ def sync_cloud_data(db_name: str, user_id: int, force: bool = False) -> None:
 
         replace_logs_for_user(db_name, int(user_id), final_rows)
         _LAST_SYNC_TS_BY_USER[int(user_id)] = now
+        return failover_notice
     except requests.RequestException as exc:
         _LAST_SYNC_FAIL_TS_BY_USER[int(user_id)] = now
         if hasattr(exc, "response") and exc.response is not None and exc.response.status_code == 402:
             _LAST_SYNC_FAIL_TS_BY_USER[int(user_id)] = now - timedelta(hours=23)
-            return
+            return failover_notice
         logger.error("Network error during cloud sync: %s", exc)
     except Exception as exc:
         _LAST_SYNC_FAIL_TS_BY_USER[int(user_id)] = now
         logger.exception("Unexpected sync error: %s", exc)
+    return failover_notice
 
 
 def sync_status_payload(db_name: str, user_id: Optional[int]) -> Dict[str, Any]:
     allow_env_fallback = get_user_count(db_name) <= 1
     if user_id is not None:
         settings = get_user_settings(db_name, int(user_id))
-        configured = bool((settings.get("sheety_endpoint") or "").strip() or ((os.getenv(SHEETY_ENDPOINT_ENV) or "").strip() if allow_env_fallback else ""))
+        accounts = get_user_api_accounts(db_name, int(user_id))
+        configured = bool(
+            accounts
+            or (settings.get("sheety_endpoint") or "").strip()
+            or ((os.getenv(SHEETY_ENDPOINT_ENV) or "").strip() if allow_env_fallback else "")
+        )
         return {
             "sheety_configured": configured,
             "disable_cloud_sync": bool(os.getenv("DISABLE_CLOUD_SYNC")),

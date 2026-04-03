@@ -24,12 +24,21 @@ def fetch_local_data(db_name: str, user_id: int) -> pd.DataFrame:
     for _, row in df.iterrows():
         start = pd.to_datetime(f"{row['start_date']} {row['start_time']}")
         end = pd.to_datetime(f"{row['end_date']} {row['end_time']}")
+        sheety_id = row.get("sheety_id")
+        if isinstance(sheety_id, float) and pd.isna(sheety_id):
+            sheety_id = None
+        elif sheety_id is not None:
+            try:
+                sheety_id = int(sheety_id)
+            except (TypeError, ValueError):
+                sheety_id = None
         special_tags = filter_special_tags(row["tags"])
         tag_value = ", ".join(special_tags) if special_tags else "Waste"
         primary_tag = special_tags[0] if special_tags else "Waste"
         final_rows.append(
             {
                 "id": row["id"],
+                "sheety_id": sheety_id,
                 "date": start.date(),
                 "start_time": start.strftime("%I:%M %p"),
                 "end_time": end.strftime("%I:%M %p"),
@@ -64,12 +73,13 @@ def replace_logs_for_user(db_name: str, user_id: int, final_rows: List[Dict[str,
             conn.execute(
                 """
                 INSERT INTO logs (
-                    start_date, start_time, end_date, end_time,
+                    sheety_id, start_date, start_time, end_date, end_time,
                     task, duration, tags, urg, imp, user_id
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
+                    p.get("sheety_id"),
                     p["start_dt"].strftime("%Y-%m-%d"),
                     p["start_dt"].strftime("%H:%M:%S"),
                     p["end_dt"].strftime("%Y-%m-%d"),

@@ -60,6 +60,7 @@ def init_db(db_name: str) -> None:
         """
         CREATE TABLE IF NOT EXISTS logs (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
+            sheety_id INTEGER,
             start_date TEXT,
             start_time TEXT,
             end_date TEXT,
@@ -75,10 +76,13 @@ def init_db(db_name: str) -> None:
     )
 
     cols = [row["name"] for row in conn.execute("PRAGMA table_info(logs)").fetchall()]
+    if "sheety_id" not in cols:
+        conn.execute("ALTER TABLE logs ADD COLUMN sheety_id INTEGER")
     if "user_id" not in cols:
         conn.execute("ALTER TABLE logs ADD COLUMN user_id INTEGER DEFAULT 0")
         conn.execute("UPDATE logs SET user_id = 0 WHERE user_id IS NULL")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_logs_user_start ON logs(user_id, start_date, start_time)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_logs_user_sheety ON logs(user_id, sheety_id)")
 
     user_cols = [row["name"] for row in conn.execute("PRAGMA table_info(users)").fetchall()]
     if "user_id" not in user_cols:

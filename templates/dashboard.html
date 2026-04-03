@@ -731,6 +731,102 @@
                 </button>
             </div>
             <div id="modalTools" class="mb-4 flex items-center justify-end"></div>
+            <div id="taskCreatePanel" class="hidden mb-6 rounded-2xl border border-emerald-200 bg-emerald-50/60 px-4 py-4 md:px-6">
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                        <p class="text-sm font-semibold text-gray-800">Add task</p>
+                        <p class="text-xs text-gray-500">Create a new log entry and sync it to Sheety.</p>
+                    </div>
+                    <button id="closeCreatePanel" class="text-xs font-semibold text-gray-500 hover:text-gray-700">Close</button>
+                </div>
+                <form id="taskCreateForm" class="mt-4 grid gap-4 md:grid-cols-2">
+                    <div class="md:col-span-2">
+                        <label class="block text-xs font-semibold text-gray-600 mb-1">Task name</label>
+                        <input id="createTaskName" type="text" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-emerald-300" required />
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1">Date</label>
+                        <input id="createTaskDate" type="date" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-emerald-300" required />
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1">Start time</label>
+                        <input id="createTaskStart" type="time" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-emerald-300" required />
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1">Duration (hours)</label>
+                        <input id="createTaskDuration" type="number" min="0.01" step="0.05" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-emerald-300" required />
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1">Tags</label>
+                        <input id="createTaskTags" type="text" placeholder="Work, Soul" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-emerald-300" />
+                    </div>
+                    <div class="flex items-center gap-4 md:col-span-2">
+                        <label class="inline-flex items-center gap-2 text-xs text-gray-600">
+                            <input id="createTaskImportant" type="checkbox" class="rounded border-slate-300 text-emerald-500 focus:ring-emerald-300" />
+                            Important
+                        </label>
+                        <label class="inline-flex items-center gap-2 text-xs text-gray-600">
+                            <input id="createTaskUrgent" type="checkbox" class="rounded border-slate-300 text-emerald-500 focus:ring-emerald-300" />
+                            Urgent
+                        </label>
+                    </div>
+                    <div class="flex items-center justify-end gap-2 md:col-span-2">
+                        <button type="button" id="cancelCreateTask" class="px-4 py-2 rounded-full border border-slate-200 text-xs font-semibold text-gray-600 hover:bg-white">Cancel</button>
+                        <button type="submit" id="saveNewTask" class="px-4 py-2 rounded-full bg-gray-900 text-emerald-200 text-xs font-semibold shadow-lg">Add task</button>
+                    </div>
+                </form>
+            </div>
+            <div id="taskEditPanel" class="hidden mb-6 rounded-2xl border border-amber-200 bg-amber-50/60 px-4 py-4 md:px-6">
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                        <p class="text-sm font-semibold text-gray-800">Edit task</p>
+                        <p class="text-xs text-gray-500">Update task details and save to Sheety.</p>
+                    </div>
+                    <button id="closeEditPanel" class="text-xs font-semibold text-gray-500 hover:text-gray-700">Close</button>
+                </div>
+                <form id="taskEditForm" class="mt-4 grid gap-4 md:grid-cols-2">
+                    <input type="hidden" id="editTaskId" />
+                    <div class="md:col-span-2">
+                        <label class="block text-xs font-semibold text-gray-600 mb-1">Task name</label>
+                        <input id="editTaskName" type="text" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-amber-300" required />
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1">Duration (hours)</label>
+                        <input id="editTaskDuration" type="number" min="0.01" step="0.05" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-amber-300" required />
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1">Tags</label>
+                        <input id="editTaskTags" type="text" placeholder="Work, Soul" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-amber-300" />
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <label class="inline-flex items-center gap-2 text-xs text-gray-600">
+                            <input id="editTaskImportant" type="checkbox" class="rounded border-slate-300 text-amber-500 focus:ring-amber-300" />
+                            Important
+                        </label>
+                        <label class="inline-flex items-center gap-2 text-xs text-gray-600">
+                            <input id="editTaskUrgent" type="checkbox" class="rounded border-slate-300 text-amber-500 focus:ring-amber-300" />
+                            Urgent
+                        </label>
+                    </div>
+                    <div class="flex items-center justify-end gap-2 md:col-span-2">
+                        <button type="button" id="cancelEditTask" class="px-4 py-2 rounded-full border border-slate-200 text-xs font-semibold text-gray-600 hover:bg-white">Cancel</button>
+                        <button type="submit" id="saveTaskChanges" class="px-4 py-2 rounded-full bg-gray-900 text-amber-300 text-xs font-semibold shadow-lg">Save changes</button>
+                    </div>
+                </form>
+            </div>
+            <div id="taskDeleteConfirm" class="hidden sticky top-4 z-10 mb-6 rounded-2xl border border-red-200 bg-red-50/70 px-4 py-4 md:px-6">
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                        <p class="text-sm font-semibold text-red-700">Delete task?</p>
+                        <p id="deleteTaskLabel" class="text-xs text-red-500">This action cannot be undone.</p>
+                    </div>
+                    <button id="closeDeleteConfirm" class="text-xs font-semibold text-red-500 hover:text-red-700">Close</button>
+                </div>
+                <div class="mt-4 flex items-center justify-end gap-2">
+                    <button type="button" id="cancelDeleteTask" class="px-4 py-2 rounded-full border border-red-200 text-xs font-semibold text-red-600 hover:bg-white">Cancel</button>
+                    <button type="button" id="confirmDeleteTask" class="px-4 py-2 rounded-full bg-red-600 text-white text-xs font-semibold shadow-lg">Delete</button>
+                </div>
+            </div>
             <div id="modalStats" class="mb-6 grid grid-cols-3 gap-4"></div>
             <div id="modalChart" class="mb-12 md:mb-6"></div>
             <div id="modalTasks" class="mt-6 md:mt-0 space-y-3"></div>
@@ -1123,9 +1219,201 @@
             }
         }
 
+        function getNetworkErrorMessage(error, action) {
+            const raw = String(error?.message || '').trim();
+            const lower = raw.toLowerCase();
+            if (lower.includes('failed to fetch') || lower.includes('network') || lower.includes('load failed')) {
+                return `Network error while ${action}. Check your connection and try again.`;
+            }
+            if (lower.includes('http 401') || lower.includes('unauthorized')) {
+                return 'Your session expired. Please log in again.';
+            }
+            if (lower.includes('http 403')) {
+                return 'Access denied. Please verify your account and try again.';
+            }
+            if (lower.includes('http 404')) {
+                return `We couldn't find the task. Sync and try again.`;
+            }
+            return raw ? `Unable to ${action}. ${raw}` : `Unable to ${action}. Please try again.`;
+        }
+
+        let lastModalFocus = null;
+        function getFocusableElements(container) {
+            if (!container) return [];
+            return Array.from(
+                container.querySelectorAll(
+                    'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
+                )
+            ).filter(el => el.offsetParent !== null);
+        }
+
+        function focusModal(modal) {
+            lastModalFocus = document.activeElement;
+            const focusable = getFocusableElements(modal);
+            if (focusable.length) {
+                focusable[0].focus();
+            }
+        }
+
+        function trapModalFocus(modal, event) {
+            const focusable = getFocusableElements(modal);
+            if (!focusable.length) return;
+            const first = focusable[0];
+            const last = focusable[focusable.length - 1];
+            if (event.shiftKey && document.activeElement === first) {
+                event.preventDefault();
+                last.focus();
+            } else if (!event.shiftKey && document.activeElement === last) {
+                event.preventDefault();
+                first.focus();
+            }
+        }
+
+        window.getModalTaskById = function(taskId) {
+            if (!window.modalData || !Array.isArray(window.modalData.tasks)) return null;
+            return window.modalData.tasks.find(task => {
+                const localId = Number(task.id || 0);
+                const remoteId = Number(task.sheety_id || 0);
+                return localId === Number(taskId) || (remoteId && remoteId === Number(taskId));
+            });
+        };
+
+        window.closeCreateTaskPanel = function() {
+            const panel = document.getElementById('taskCreatePanel');
+            if (panel) panel.classList.add('hidden');
+        };
+
+        window.openCreateTaskPanel = function() {
+            const panel = document.getElementById('taskCreatePanel');
+            if (!panel) return;
+            window.closeEditTaskPanel();
+            window.closeDeleteTaskConfirm();
+            const nameInput = document.getElementById('createTaskName');
+            const dateInput = document.getElementById('createTaskDate');
+            const timeInput = document.getElementById('createTaskStart');
+            const durationInput = document.getElementById('createTaskDuration');
+            const tagInput = document.getElementById('createTaskTags');
+            const importantInput = document.getElementById('createTaskImportant');
+            const urgentInput = document.getElementById('createTaskUrgent');
+            const now = new Date();
+            if (nameInput) nameInput.value = '';
+            if (durationInput) durationInput.value = '';
+            if (tagInput) tagInput.value = '';
+            if (importantInput) importantInput.checked = false;
+            if (urgentInput) urgentInput.checked = false;
+            if (dateInput) {
+                const selected = window.currentDate || now.toISOString().slice(0, 10);
+                dateInput.value = selected;
+            }
+            if (timeInput) {
+                const hours = String(now.getHours()).padStart(2, '0');
+                const minutes = String(now.getMinutes()).padStart(2, '0');
+                timeInput.value = `${hours}:${minutes}`;
+            }
+            panel.classList.remove('hidden');
+            try {
+                panel.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            } catch (e) {
+                panel.scrollIntoView();
+            }
+        };
+
+        window.closeEditTaskPanel = function() {
+            const panel = document.getElementById('taskEditPanel');
+            if (panel) panel.classList.add('hidden');
+        };
+
+        window.openEditTaskPanel = function(task) {
+            if (!task) return;
+            if (task.sheety_id == null) {
+                if (window.showWarningToast) {
+                    window.showWarningToast('This task is not linked to Sheety yet. Sync with full API access to edit it.');
+                } else {
+                    setGlobalLoading(false, 'This task is not linked to Sheety yet.');
+                }
+                return;
+            }
+            const panel = document.getElementById('taskEditPanel');
+            if (!panel) return;
+            window.closeDeleteTaskConfirm();
+            window.closeCreateTaskPanel();
+            const nameInput = document.getElementById('editTaskName');
+            const durationInput = document.getElementById('editTaskDuration');
+            const tagInput = document.getElementById('editTaskTags');
+            const importantInput = document.getElementById('editTaskImportant');
+            const urgentInput = document.getElementById('editTaskUrgent');
+            const idInput = document.getElementById('editTaskId');
+            const resolvedTaskId = task.sheety_id ?? task.id ?? '';
+            if (idInput) idInput.value = resolvedTaskId;
+            if (nameInput) nameInput.value = String(task.task || '').trim();
+            if (durationInput) durationInput.value = Number(task.duration || task.duration_hours || 0) || '';
+            if (tagInput) {
+                const displayTag = formatTagNames(task.tag);
+                tagInput.value = displayTag === 'Waste' ? '' : displayTag;
+            }
+            if (importantInput) importantInput.checked = Boolean(task.important);
+            if (urgentInput) urgentInput.checked = Boolean(task.urgent);
+            panel.classList.remove('hidden');
+            try {
+                panel.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            } catch (e) {
+                panel.scrollIntoView();
+            }
+        };
+
+        window.promptAddTaskAfterDelete = function() {
+            const shouldAdd = window.confirm('Task deleted. Would you like to add a new task now?');
+            if (!shouldAdd) return;
+            if (window.openCreateTaskPanel) {
+                window.openCreateTaskPanel();
+            }
+            if (window.showInfoToast) {
+                window.showInfoToast('Add the new task details below to keep your timeline aligned.');
+            }
+        };
+
+        window.closeDeleteTaskConfirm = function() {
+            const panel = document.getElementById('taskDeleteConfirm');
+            if (panel) panel.classList.add('hidden');
+            window.pendingDeleteTaskId = null;
+        };
+
+        window.openDeleteTaskConfirm = function(task) {
+            if (!task) return;
+            if (task.sheety_id == null) {
+                if (window.showWarningToast) {
+                    window.showWarningToast('This task is not linked to Sheety yet. Sync with full API access to delete it.');
+                } else {
+                    setGlobalLoading(false, 'This task is not linked to Sheety yet.');
+                }
+                return;
+            }
+            const panel = document.getElementById('taskDeleteConfirm');
+            if (!panel) return;
+            window.closeEditTaskPanel();
+            window.closeCreateTaskPanel();
+            window.pendingDeleteTaskId = task.sheety_id ?? task.id ?? null;
+            const label = document.getElementById('deleteTaskLabel');
+            if (label) {
+                const taskName = String(task.task || '').trim() || 'this task';
+                label.textContent = `Delete "${taskName}"? This action cannot be undone.`;
+            }
+            panel.classList.remove('hidden');
+        };
+
+        window.refreshModalData = function() {
+            const filterType = window.modalFilterType || 'all';
+            const title = window.modalTitle || (document.getElementById('modalTitle')?.textContent || 'Tasks');
+            const tagName = window.modalTagName || '';
+            const chartMode = window.modalChartMode || 'auto';
+            window.applyFilter(filterType, title, tagName, chartMode);
+        };
+
         window.applyFilter = function(filterType, title, tagName = '', chartMode = 'auto') {
             console.log('applyFilter called:', filterType, title, tagName, chartMode);
             window.closeDropdown();
+            window.modalTitle = title;
+            window.modalTagName = tagName;
             const url = `/api/tasks?date=${window.currentDate}&period=${window.currentPeriod}&filter=${filterType}${tagName ? '&tag=' + encodeURIComponent(tagName) : ''}`;
 
             console.log('Fetching:', url);
@@ -1152,7 +1440,8 @@
                 })
                 .catch(error => {
                     console.error('Error fetching tasks:', error);
-                    setGlobalLoading(false, 'Error loading tasks: ' + error.message);
+                    const message = getNetworkErrorMessage(error, 'load tasks');
+                    setGlobalLoading(false, message);
                     try {
                         const fallback = { tasks: [], total_hours: 0, total_minutes: 0, count: 0 };
                         window.showModal(title, fallback, filterType, chartMode);
@@ -1264,6 +1553,13 @@
                     const tagStyle = `background-color: ${tagColor}15; color: ${tagColor}; border: 1px solid ${tagColor}30;`;
                     tagBadge = `<span class="px-2 py-0.5 rounded-full text-xs font-medium" style="${tagStyle}">${displayTag}</span>`;
                 }
+                const taskId = Number(task.sheety_id || task.id || 0);
+                const actionButtons = (taskId && task.sheety_id != null)
+                    ? `<div class="flex items-center gap-2">
+                            <button class="px-2.5 py-1 rounded-full border border-slate-200 text-[11px] font-semibold text-gray-600 hover:bg-white" data-action="edit-task" data-task-id="${taskId}">Edit</button>
+                            <button class="px-2.5 py-1 rounded-full border border-red-200 text-[11px] font-semibold text-red-600 hover:bg-white" data-action="delete-task" data-task-id="${taskId}">Delete</button>
+                        </div>`
+                    : '';
                 html += `
                     <div class="luxury-card rounded-2xl p-4 md:p-5 mb-3 shadow-lg">
                         <div class="flex items-center justify-between gap-3">
@@ -1276,8 +1572,9 @@
                                     ${badges.join('')}
                                 </div>
                             </div>
-                            <div class="shrink-0">
+                            <div class="shrink-0 flex flex-col items-end gap-2">
                                 <span class="inline-flex px-2.5 py-1 rounded-full bg-white border border-slate-200 text-xs font-semibold text-gray-700 js-hover-hours hover-swap" data-hours="${dur}">${durText}</span>
+                                ${actionButtons}
                             </div>
                         </div>
                     </div>
@@ -1297,6 +1594,11 @@
             window.modalQuery = '';
             window.hiddenTags = window.hiddenTags || {};
             document.getElementById('modalTitle').textContent = title;
+            const editPanel = document.getElementById('taskEditPanel');
+            if (editPanel) editPanel.classList.add('hidden');
+            const deletePanel = document.getElementById('taskDeleteConfirm');
+            if (deletePanel) deletePanel.classList.add('hidden');
+            window.pendingDeleteTaskId = null;
 
             const periodMinutes = ensureFinite(data.period_minutes || data.total_minutes || 0);
             const period = window.currentPeriod || 'day';
@@ -1475,17 +1777,20 @@
                         <div class="flex-1 min-w-0">
                             <input id="modalSearch" type="search" placeholder="Search tasks..." class="w-full px-3 py-1.5 rounded-full bg-white border border-slate-200 text-xs text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-300" />
                         </div>
-                        <div class="relative shrink-0">
-                            <button id="modalSortBtn" class="px-3 py-1.5 rounded-full bg-white border border-slate-200 text-xs text-gray-700 shadow-sm active:scale-[0.98] transition">
-                                Sort: <span id="modalSortLabel">${sortLabels[window.modalSort] || window.modalSortLabel || 'Time ↓'}</span>
-                            </button>
-                            <div id="modalSortMenu" class="absolute right-0 mt-2 w-44 bg-white rounded-xl shadow-2xl border border-slate-200 hidden">
-                                <div class="dropdown-item" data-key="time">Time</div>
-                                <div class="dropdown-item" data-key="duration">Duration</div>
-                                <div class="dropdown-item" data-key="task">Task</div>
-                                <div class="dropdown-item" data-key="tag">Tag</div>
-                                <div class="dropdown-item" data-key="imp">Important first</div>
-                                <div class="dropdown-item" data-key="urg">Urgent first</div>
+                        <div class="flex items-center gap-2 shrink-0">
+                            <button id="openCreateTask" class="px-3 py-1.5 rounded-full bg-gray-900 text-emerald-200 text-xs font-semibold shadow-sm active:scale-[0.98] transition">Add task</button>
+                            <div class="relative">
+                                <button id="modalSortBtn" class="px-3 py-1.5 rounded-full bg-white border border-slate-200 text-xs text-gray-700 shadow-sm active:scale-[0.98] transition">
+                                    Sort: <span id="modalSortLabel">${sortLabels[window.modalSort] || window.modalSortLabel || 'Time ↓'}</span>
+                                </button>
+                                <div id="modalSortMenu" class="absolute right-0 mt-2 w-44 bg-white rounded-xl shadow-2xl border border-slate-200 hidden">
+                                    <div class="dropdown-item" data-key="time">Time</div>
+                                    <div class="dropdown-item" data-key="duration">Duration</div>
+                                    <div class="dropdown-item" data-key="task">Task</div>
+                                    <div class="dropdown-item" data-key="tag">Tag</div>
+                                    <div class="dropdown-item" data-key="imp">Important first</div>
+                                    <div class="dropdown-item" data-key="urg">Urgent first</div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1500,6 +1805,10 @@
                         window.modalQuery = search.value;
                         window.renderModalTasks();
                     };
+                }
+                const addBtn = document.getElementById('openCreateTask');
+                if (addBtn) {
+                    addBtn.onclick = () => window.openCreateTaskPanel && window.openCreateTaskPanel();
                 }
                 if (btn && menu && label) {
                     btn.onclick = () => menu.classList.toggle('hidden');
@@ -1746,11 +2055,16 @@
                 }
             }
             window.renderModalTasks();
+            if (window.renderModalStats) window.renderModalStats();
             document.getElementById('taskModal').classList.add('active');
+            focusModal(modal);
         };
 
         window.closeModal = function() {
             document.getElementById('taskModal').classList.remove('active');
+            if (lastModalFocus && typeof lastModalFocus.focus === 'function') {
+                lastModalFocus.focus();
+            }
         };
 
         // Initialize on DOM load
@@ -1892,6 +2206,234 @@
                     window.closeModal();
                 }
             });
+
+            document.addEventListener('keydown', (event) => {
+                const modal = document.getElementById('taskModal');
+                if (!modal || !modal.classList.contains('active')) return;
+                if (event.key === 'Tab') {
+                    trapModalFocus(modal, event);
+                }
+            });
+
+            const modalTasks = document.getElementById('modalTasks');
+            if (modalTasks && !modalTasks.__taskActionBound) {
+                modalTasks.addEventListener('click', (e) => {
+                    const editBtn = e.target.closest('[data-action="edit-task"]');
+                    if (editBtn) {
+                        const taskId = parseInt(editBtn.dataset.taskId || '0', 10);
+                        if (taskId) window.openEditTaskPanel(window.getModalTaskById(taskId));
+                        return;
+                    }
+                    const deleteBtn = e.target.closest('[data-action="delete-task"]');
+                    if (deleteBtn) {
+                        const taskId = parseInt(deleteBtn.dataset.taskId || '0', 10);
+                        if (taskId) window.openDeleteTaskConfirm(window.getModalTaskById(taskId));
+                    }
+                });
+                modalTasks.__taskActionBound = true;
+            }
+            const closeEdit = document.getElementById('closeEditPanel');
+            const cancelEdit = document.getElementById('cancelEditTask');
+            if (closeEdit) closeEdit.onclick = window.closeEditTaskPanel;
+            if (cancelEdit) cancelEdit.onclick = window.closeEditTaskPanel;
+            const closeCreate = document.getElementById('closeCreatePanel');
+            const cancelCreate = document.getElementById('cancelCreateTask');
+            if (closeCreate) closeCreate.onclick = window.closeCreateTaskPanel;
+            if (cancelCreate) cancelCreate.onclick = window.closeCreateTaskPanel;
+            const closeDelete = document.getElementById('closeDeleteConfirm');
+            const cancelDelete = document.getElementById('cancelDeleteTask');
+            if (closeDelete) closeDelete.onclick = window.closeDeleteTaskConfirm;
+            if (cancelDelete) cancelDelete.onclick = window.closeDeleteTaskConfirm;
+            const createForm = document.getElementById('taskCreateForm');
+            if (createForm && !createForm.__bound) {
+                createForm.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const name = String(document.getElementById('createTaskName')?.value || '').trim();
+                    const date = String(document.getElementById('createTaskDate')?.value || '').trim();
+                    const startTime = String(document.getElementById('createTaskStart')?.value || '').trim();
+                    const duration = parseFloat(document.getElementById('createTaskDuration')?.value || '0');
+                    const tags = String(document.getElementById('createTaskTags')?.value || '').trim();
+                    const important = Boolean(document.getElementById('createTaskImportant')?.checked);
+                    const urgent = Boolean(document.getElementById('createTaskUrgent')?.checked);
+                    if (!name) {
+                        setGlobalLoading(false, 'Task name is required');
+                        return;
+                    }
+                    if (!date) {
+                        setGlobalLoading(false, 'Date is required');
+                        return;
+                    }
+                    if (!startTime) {
+                        setGlobalLoading(false, 'Start time is required');
+                        return;
+                    }
+                    if (!Number.isFinite(duration) || duration <= 0) {
+                        setGlobalLoading(false, 'Duration must be greater than 0');
+                        return;
+                    }
+                    const saveBtn = document.getElementById('saveNewTask');
+                    const originalText = saveBtn ? saveBtn.textContent : '';
+                    if (saveBtn) {
+                        saveBtn.textContent = 'Adding...';
+                        saveBtn.disabled = true;
+                    }
+                    setGlobalLoading(true);
+                    try {
+                        const response = await fetch('/api/tasks', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                task: name,
+                                date,
+                                start_time: startTime,
+                                duration,
+                                tag: tags,
+                                urgent,
+                                important
+                            })
+                        });
+                        const contentType = response.headers.get('content-type') || '';
+                        const result = contentType.includes('application/json') ? await response.json() : null;
+                        if (!response.ok) {
+                            throw new Error(result?.error || `HTTP ${response.status}`);
+                        }
+                        if (result?.failover && window.showApiFailoverNotification) {
+                            window.showApiFailoverNotification(result.failover.from, result.failover.to);
+                        }
+                        if (window.showSuccessToast) {
+                            window.showSuccessToast('Task added');
+                        }
+                        window.closeCreateTaskPanel();
+                        window.refreshModalData();
+                    } catch (error) {
+                        const message = getNetworkErrorMessage(error, 'add the task');
+                        if (window.showErrorToast) {
+                            window.showErrorToast(message);
+                        } else {
+                            setGlobalLoading(false, message);
+                        }
+                    } finally {
+                        if (saveBtn) {
+                            saveBtn.textContent = originalText || 'Add task';
+                            saveBtn.disabled = false;
+                        }
+                        setGlobalLoading(false);
+                    }
+                });
+                createForm.__bound = true;
+            }
+            const editForm = document.getElementById('taskEditForm');
+            if (editForm && !editForm.__bound) {
+                editForm.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const taskId = parseInt(document.getElementById('editTaskId')?.value || '0', 10);
+                    if (!taskId) return;
+                    const name = String(document.getElementById('editTaskName')?.value || '').trim();
+                    const duration = parseFloat(document.getElementById('editTaskDuration')?.value || '0');
+                    const tags = String(document.getElementById('editTaskTags')?.value || '').trim();
+                    const important = Boolean(document.getElementById('editTaskImportant')?.checked);
+                    const urgent = Boolean(document.getElementById('editTaskUrgent')?.checked);
+                    if (!name) {
+                        setGlobalLoading(false, 'Task name is required');
+                        return;
+                    }
+                    if (!Number.isFinite(duration) || duration <= 0) {
+                        setGlobalLoading(false, 'Duration must be greater than 0');
+                        return;
+                    }
+                    const saveBtn = document.getElementById('saveTaskChanges');
+                    const originalText = saveBtn ? saveBtn.textContent : '';
+                    if (saveBtn) {
+                        saveBtn.textContent = 'Saving...';
+                        saveBtn.disabled = true;
+                    }
+                    setGlobalLoading(true);
+                    try {
+                        const response = await fetch(`/api/tasks/${taskId}`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ task: name, duration: duration, tag: tags, urgent, important })
+                        });
+                        const contentType = response.headers.get('content-type') || '';
+                        const result = contentType.includes('application/json') ? await response.json() : null;
+                        if (!response.ok) {
+                            throw new Error(result?.error || `HTTP ${response.status}`);
+                        }
+                        if (result?.failover && window.showApiFailoverNotification) {
+                            window.showApiFailoverNotification(result.failover.from, result.failover.to);
+                        }
+                        if (window.showSuccessToast) {
+                            window.showSuccessToast('Task updated');
+                        }
+                        window.closeEditTaskPanel();
+                        window.refreshModalData();
+                    } catch (error) {
+                        const message = getNetworkErrorMessage(error, 'update the task');
+                        if (window.showErrorToast) {
+                            window.showErrorToast(message);
+                        } else {
+                            setGlobalLoading(false, message);
+                        }
+                    } finally {
+                        if (saveBtn) {
+                            saveBtn.textContent = originalText || 'Save changes';
+                            saveBtn.disabled = false;
+                        }
+                        setGlobalLoading(false);
+                    }
+                });
+                editForm.__bound = true;
+            }
+            const confirmDelete = document.getElementById('confirmDeleteTask');
+            if (confirmDelete && !confirmDelete.__bound) {
+                confirmDelete.addEventListener('click', async () => {
+                    const taskId = Number(window.pendingDeleteTaskId || 0);
+                    if (!taskId) return;
+                    confirmDelete.disabled = true;
+                    const originalText = confirmDelete.textContent;
+                    confirmDelete.textContent = 'Deleting...';
+                    setGlobalLoading(true);
+                    try {
+                        const response = await fetch(`/api/tasks/${taskId}`, { method: 'DELETE' });
+                        const contentType = response.headers.get('content-type') || '';
+                        const result = contentType.includes('application/json') ? await response.json() : null;
+                        if (!response.ok) {
+                            throw new Error(result?.error || `HTTP ${response.status}`);
+                        }
+                        if (result?.failover && window.showApiFailoverNotification) {
+                            window.showApiFailoverNotification(result.failover.from, result.failover.to);
+                        }
+                        if (window.showSuccessToast) {
+                            window.showSuccessToast('Task deleted');
+                        }
+                        if (result?.empty_window && window.showInfoToast) {
+                            const windowInfo = result.empty_window;
+                            const label = windowInfo?.start_label && windowInfo?.end_label
+                                ? `${windowInfo.start_label} - ${windowInfo.end_label}`
+                                : 'an empty window';
+                            const dateLabel = windowInfo?.date ? ` on ${windowInfo.date}` : '';
+                            window.showInfoToast(`Open time created: ${label}${dateLabel}.`);
+                        }
+                        window.closeDeleteTaskConfirm();
+                        window.refreshModalData();
+                        if (window.promptAddTaskAfterDelete) {
+                            window.promptAddTaskAfterDelete();
+                        }
+                    } catch (error) {
+                        const message = getNetworkErrorMessage(error, 'delete the task');
+                        if (window.showErrorToast) {
+                            window.showErrorToast(message);
+                        } else {
+                            setGlobalLoading(false, message);
+                        }
+                    } finally {
+                        confirmDelete.textContent = originalText || 'Delete';
+                        confirmDelete.disabled = false;
+                        setGlobalLoading(false);
+                    }
+                });
+                confirmDelete.__bound = true;
+            }
 
             // Update button text based on period
             const period = window.currentPeriod || 'day';
@@ -2052,7 +2594,18 @@
                         return;
                     }
                     if (!r.ok) throw new Error(`HTTP ${r.status}`);
-                    await r.json();
+                    let result = null;
+                    try {
+                        result = await r.json();
+                    } catch (e) {
+                        result = null;
+                    }
+                    if (result?.failover && window.showApiFailoverNotification) {
+                        window.showApiFailoverNotification(result.failover.from, result.failover.to);
+                    }
+                    if (showLoading && window.showSuccessToast) {
+                        window.showSuccessToast('Synced latest data');
+                    }
                     if (showLoading) {
                         setGlobalLoading(false, '');
                     }
@@ -2125,5 +2678,7 @@
             }
         }); // End DOMContentLoaded
     </script>
+    {% include '_toast_notifications.html' %}
+    {% include '_error_boundary.html' %}
 </body>
 </html>

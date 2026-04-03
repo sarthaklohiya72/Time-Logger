@@ -11,6 +11,7 @@ from ..repositories.sheety_accounts import (
     update_account_test_result,
     get_user_api_accounts
 )
+from ..core.rows import row_value
 
 
 logger = logging.getLogger(__name__)
@@ -38,7 +39,7 @@ class SheetyFailoverService:
         """Test if an API account is working. Returns (success, row_count, error_message)."""
         try:
             api_base_url = account['api_base_url']
-            headers = self._build_headers(account.get('api_token'))
+            headers = self._build_headers(row_value(account, 'api_token'))
             
             response = requests.get(api_base_url, headers=headers, timeout=10)
             
@@ -70,7 +71,7 @@ class SheetyFailoverService:
         try:
             api_base_url = account['api_base_url']
             url = f"{api_base_url.rstrip('/')}/{endpoint.lstrip('/')}" if endpoint else api_base_url
-            headers = self._build_headers(account.get('api_token'))
+            headers = self._build_headers(row_value(account, 'api_token'))
             
             if method.upper() == 'GET':
                 response = requests.get(url, headers=headers, timeout=15)
@@ -105,10 +106,21 @@ class SheetyFailoverService:
         """
         # Get active account
         active_account = get_active_api_account(self.db_name, self.user_id)
-        
+
         if not active_account:
-            # No accounts configured
-            return False, None, "No Sheety API accounts configured"
+            accounts = get_user_api_accounts(self.db_name, self.user_id)
+            if not accounts:
+                # No accounts configured
+                return False, None, "No Sheety API accounts configured"
+            for account in accounts:
+                success, _, _ = self._test_api_account(account)
+                update_account_test_result(self.db_name, account["id"], success, self.user_id)
+                if success:
+                    set_active_account(self.db_name, account["id"], self.user_id)
+                    active_account = account
+                    break
+            if not active_account:
+                return False, None, "No working Sheety API account found"
         
         # Try the active account
         success, data = self._try_request(active_account, method, endpoint, json_data)
@@ -116,41 +128,33 @@ class SheetyFailoverService:
         if success:
             return True, data, None
         
-        # Active account failed, try failover
+        # Active account failed, try every fallback account
         logger.info(f"Active account {active_account['id']} failed, trying failover...")
-        
-        current_priority = active_account['priority']
+
+        accounts = get_user_api_accounts(self.db_name, self.user_id)
+        if not accounts:
+            return False, None, "No Sheety API accounts configured"
+
         attempts = 0
-        
-        while attempts < self.max_retries:
+        for account in accounts:
+            if account["id"] == active_account["id"]:
+                continue
             attempts += 1
-            
-            # Get next account
-            next_account = get_next_fallback_account(self.db_name, self.user_id, current_priority)
-            
-            if not next_account or next_account['id'] == active_account['id']:
-                # We've cycled through all accounts
-                break
-            
-            logger.info(f"Trying fallback account {next_account['id']} (attempt {attempts})")
-            
-            success, data = self._try_request(next_account, method, endpoint, json_data)
-            
+            logger.info(f"Trying fallback account {account['id']} (attempt {attempts})")
+            success, data = self._try_request(account, method, endpoint, json_data)
             if success:
                 # Failover successful! Switch to this account
-                set_active_account(self.db_name, next_account['id'], self.user_id)
+                set_active_account(self.db_name, account["id"], self.user_id)
                 self.switched_account = True
-                self.switched_from = active_account['account_email']
-                self.switched_to = next_account['account_email']
-                
+                self.switched_from = active_account["account_email"]
+                self.switched_to = account["account_email"]
+
                 logger.info(f"Failover successful: switched from {self.switched_from} to {self.switched_to}")
-                
+
                 return True, data, None
-            
-            current_priority = next_account['priority']
-        
+
         # All accounts failed
-        return False, None, f"All API accounts failed after {attempts} attempts"
+        return False, None, "All API accounts failed"
     
     def get_failover_notification(self) -> Optional[Dict[str, str]]:
         """Get notification data if account was switched."""
