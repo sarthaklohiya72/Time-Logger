@@ -177,7 +177,16 @@ def graph_data():
         values.append(round(minutes / 60.0, 2))
 
     total_hours = round(sum(values), 2)
-    avg_hours = round(total_hours / days, 2) if days else 0
+    first_logged_index = None
+    for idx, value in enumerate(values):
+        if value > 0:
+            first_logged_index = idx
+            break
+    if first_logged_index is None:
+        avg_hours = 0
+    else:
+        active_days = max(1, days - first_logged_index)
+        avg_hours = round(total_hours / active_days, 2)
     max_hours = round(max(values) if values else 0, 2)
 
     tasks: List[Dict[str, Any]] = []

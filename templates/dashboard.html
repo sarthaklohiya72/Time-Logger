@@ -191,6 +191,33 @@
             transform: translate(calc(var(--tilt-x) * -1), 0) rotate(calc(var(--tilt-rotate) * -1));
             transition: transform 0.3s ease-out;
         }
+        .water-q1 {
+            background: linear-gradient(180deg, rgba(251, 191, 36, 0.45) 0%, rgba(245, 158, 11, 0.35) 100%);
+        }
+        .water-q2 {
+            background: linear-gradient(180deg, rgba(52, 211, 153, 0.45) 0%, rgba(16, 185, 129, 0.35) 100%);
+        }
+        .water-q3 {
+            background: linear-gradient(180deg, rgba(148, 163, 184, 0.45) 0%, rgba(100, 116, 139, 0.35) 100%);
+        }
+        .water-q4 {
+            background: linear-gradient(180deg, rgba(248, 113, 113, 0.45) 0%, rgba(239, 68, 68, 0.35) 100%);
+        }
+        .water-important {
+            background: linear-gradient(180deg, rgba(96, 165, 250, 0.45) 0%, rgba(59, 130, 246, 0.35) 100%);
+        }
+        .water-not-important {
+            background: linear-gradient(180deg, rgba(163, 163, 163, 0.45) 0%, rgba(115, 115, 115, 0.35) 100%);
+        }
+        .water-urgent {
+            background: linear-gradient(180deg, rgba(251, 146, 60, 0.45) 0%, rgba(249, 115, 22, 0.35) 100%);
+        }
+        .water-not-urgent {
+            background: linear-gradient(180deg, rgba(45, 212, 191, 0.45) 0%, rgba(20, 184, 166, 0.35) 100%);
+        }
+        .water-total {
+            background: linear-gradient(180deg, rgba(168, 162, 158, 0.45) 0%, rgba(120, 113, 108, 0.35) 100%);
+        }
         @keyframes wave {
             0%, 100% {
                 transform: translate(var(--tilt-x, 0%), 0) rotate(var(--tilt-rotate, 0deg));
@@ -257,7 +284,7 @@
                             <a href="{{ url_for('admin.admin_users') }}" class="px-3 py-1.5 rounded-full bg-white/80 border border-[rgba(148,126,86,0.35)] text-xs font-semibold text-gray-700 hover:bg-[#F7F1E6] transition-all">Admin</a>
                         {% endif %}
                         {% if current_user and current_user.display_name %}
-                            <a href="{{ url_for('main.settings') }}" class="px-3 py-1.5 rounded-full bg-white/80 border border-[rgba(148,126,86,0.35)] text-xs font-semibold text-gray-700 hover:bg-[#F7F1E6] transition-all">Settings</a>
+                            <a href="{{ url_for('main.settings') }}" class="px-3 py-1.5 rounded-full bg-white/80 border border-[rgba(148,126,86,0.35)] text-xs font-semibold text-gray-700 hover:bg-[#F7F1E6] transition-all">{{ current_user.display_name }}</a>
                         {% endif %}
                     </div>
                 </div>
@@ -295,14 +322,13 @@
                     </div>
                     {% if current_user and current_user.display_name %}
                         <div class="hidden md:flex items-center gap-2 pl-2">
-                            <div class="px-3 py-2 rounded-full bg-white/80 border border-[rgba(148,126,86,0.35)] text-xs font-semibold text-gray-800">
+                            <a href="{{ url_for('main.settings') }}" class="px-3 py-2 rounded-full bg-white/80 border border-[rgba(148,126,86,0.35)] text-xs font-semibold text-gray-800 hover:bg-[#F7F1E6] transition-all">
                                 {{ current_user.display_name }}
-                            </div>
+                            </a>
                             <a href="{{ url_for('main.graphs') }}" class="px-3 py-2 rounded-full bg-white/80 border border-[rgba(148,126,86,0.35)] text-xs font-semibold text-gray-700 hover:bg-[#F7F1E6] transition-all">Graphs</a>
                             {% if is_admin %}
                                 <a href="{{ url_for('admin.admin_users') }}" class="px-3 py-2 rounded-full bg-white/80 border border-[rgba(148,126,86,0.35)] text-xs font-semibold text-gray-700 hover:bg-[#F7F1E6] transition-all">Admin</a>
                             {% endif %}
-                            <a href="{{ url_for('main.settings') }}" class="px-3 py-2 rounded-full bg-white/80 border border-[rgba(148,126,86,0.35)] text-xs font-semibold text-gray-700 hover:bg-[#F7F1E6] transition-all">Settings</a>
                             <a href="{{ url_for('auth.logout') }}" class="px-3 py-2 rounded-full bg-gray-900 text-amber-300 text-xs font-semibold shadow-lg">Logout</a>
                         </div>
                     {% endif %}
@@ -434,7 +460,7 @@
                     </span>
                 </div>
                 <div class="w-full h-2 rounded-full bg-[#E7D8C2] overflow-hidden">
-                    <div class="h-full rounded-full bg-gradient-to-r from-[#111827] via-[#111827] to-[#F5B826]" style="width: 100%"></div>
+                    <div class="h-full rounded-full bg-gradient-to-r from-[#111827] via-[#111827] to-[#F5B826]" data-width="100"></div>
                 </div>
                 <div class="mt-3 text-xs text-gray-500" id="summaryPeriodCaption" data-total-text="{{ current_month }} · {{ period | title }} view totals." data-avg-text="{{ current_month }} · {{ period | title }} avg/day.">{{ current_month }} · {{ period | title }} view totals.</div>
             </div>
@@ -450,7 +476,7 @@
                     </span>
                 </div>
                 <div class="w-full h-2 rounded-full bg-[#E7D8C2] overflow-hidden">
-                    <div class="h-full rounded-full bg-gradient-to-r from-[#F97316] via-[#F59E0B] to-[#FACC15]" style="width: {{ top_tag_pct }}%"></div>
+                    <div class="h-full rounded-full bg-gradient-to-r from-[#F97316] via-[#F59E0B] to-[#FACC15]" data-width="{{ top_tag_pct }}"></div>
                 </div>
                 <div class="mt-3 text-xs text-gray-500">{{ top_tag_pct }}% of logged time this period.</div>
             </div>
@@ -465,7 +491,7 @@
                     </span>
                 </div>
                 <div class="w-full h-2 rounded-full bg-[#E7D8C2] overflow-hidden">
-                    <div class="h-full rounded-full bg-gradient-to-r {{ top_quad_bar_class }}" style="width: {{ top_quad_pct }}%"></div>
+                    <div class="h-full rounded-full bg-gradient-to-r {{ top_quad_bar_class }}" data-width="{{ top_quad_pct }}"></div>
                 </div>
                 <div class="mt-3 text-xs text-gray-500">{{ top_quad_sub }} · {{ top_quad_pct }}% share.</div>
             </div>
@@ -486,7 +512,7 @@
                     
                     <!-- Q1: Critical - Important & Urgent (Desktop: Row 1, Col 1) -->
                     <div class="matrix-card luxury-card rounded-xl md:rounded-2xl p-3 md:p-5 bg-gradient-to-br from-amber-50/80 to-yellow-50/40 border-amber-200/60 hover:shadow-lg transition-all duration-300 relative overflow-hidden md:order-1" onclick="viewMatrixQuadrant('q1', 'Critical')">
-                        <div class="water-fill" style="height: {{ matrix.q1.pct }}%; background: linear-gradient(180deg, rgba(251, 191, 36, 0.45) 0%, rgba(245, 158, 11, 0.35) 100%);"></div>
+                        <div class="water-fill water-q1" data-height="{{ matrix.q1.pct }}"></div>
                         <div class="relative z-10">
                             <div class="flex justify-between items-start mb-2 md:mb-4">
                                 <div>
@@ -502,7 +528,7 @@
 
                     <!-- Q2: Growth - Important & Not Urgent (Desktop: Row 1, Col 2) -->
                     <div class="matrix-card luxury-card rounded-xl md:rounded-2xl p-3 md:p-5 bg-gradient-to-br from-green-100/70 to-emerald-50/50 border-green-200/60 hover:shadow-lg transition-all duration-300 relative overflow-hidden md:order-2" onclick="viewMatrixQuadrant('q2', 'Growth')">
-                        <div class="water-fill" style="height: {{ matrix.q2.pct }}%; background: linear-gradient(180deg, rgba(52, 211, 153, 0.45) 0%, rgba(16, 185, 129, 0.35) 100%);"></div>
+                        <div class="water-fill water-q2" data-height="{{ matrix.q2.pct }}"></div>
                         <div class="relative z-10">
                             <div class="flex justify-between items-start mb-2 md:mb-4">
                                 <div>
@@ -518,7 +544,7 @@
 
                     <!-- Q3: Drudgery - Urgent & Not Important (Desktop: Row 2, Col 1) -->
                     <div class="matrix-card luxury-card rounded-xl md:rounded-2xl p-3 md:p-5 bg-gradient-to-br from-slate-200/70 to-zinc-100/50 border-slate-300/60 hover:shadow-lg transition-all duration-300 relative overflow-hidden md:order-4" onclick="viewMatrixQuadrant('q3', 'Drudgery')">
-                        <div class="water-fill" style="height: {{ matrix.q3.pct }}%; background: linear-gradient(180deg, rgba(148, 163, 184, 0.45) 0%, rgba(100, 116, 139, 0.35) 100%);"></div>
+                        <div class="water-fill water-q3" data-height="{{ matrix.q3.pct }}"></div>
                         <div class="relative z-10">
                             <div class="flex justify-between items-start mb-2 md:mb-4">
                                 <div>
@@ -534,7 +560,7 @@
 
                     <!-- Q4: Waste - Not Important & Not Urgent (Desktop: Row 2, Col 2) -->
                     <div class="matrix-card luxury-card rounded-xl md:rounded-2xl p-3 md:p-5 bg-gradient-to-br from-red-100/60 to-rose-50/40 border-red-200/50 hover:shadow-lg transition-all duration-300 relative overflow-hidden md:order-5" onclick="viewMatrixQuadrant('q4', 'Waste')">
-                        <div class="water-fill" style="height: {{ matrix.q4.pct }}%; background: linear-gradient(180deg, rgba(248, 113, 113, 0.45) 0%, rgba(239, 68, 68, 0.35) 100%);"></div>
+                        <div class="water-fill water-q4" data-height="{{ matrix.q4.pct }}"></div>
                         <div class="relative z-10">
                             <div class="flex justify-between items-start mb-2 md:mb-4">
                                 <div>
@@ -550,7 +576,7 @@
 
                     <!-- Important (All) - Blue (Desktop: Row 1, Col 3) -->
                     <div class="matrix-card luxury-card rounded-xl md:rounded-2xl p-3 md:p-5 bg-gradient-to-br from-blue-50/70 to-indigo-50/40 border-blue-200/60 hover:shadow-lg transition-all duration-300 relative overflow-hidden md:order-3" onclick="viewMatrixQuadrant('important', 'Important')">
-                        <div class="water-fill" style="height: {{ matrix.important.pct }}%; background: linear-gradient(180deg, rgba(96, 165, 250, 0.45) 0%, rgba(59, 130, 246, 0.35) 100%);"></div>
+                        <div class="water-fill water-important" data-height="{{ matrix.important.pct }}"></div>
                         <div class="relative z-10">
                             <div class="flex justify-between items-start mb-2 md:mb-4">
                                 <div>
@@ -566,7 +592,7 @@
 
                     <!-- Not Important (All) - Very Light Neutral (Desktop: Row 2, Col 3) -->
                     <div class="matrix-card luxury-card rounded-xl md:rounded-2xl p-3 md:p-5 bg-gradient-to-br from-neutral-100/50 to-stone-50/30 border-neutral-200/50 hover:shadow-lg transition-all duration-300 relative overflow-hidden md:order-6" onclick="viewMatrixQuadrant('not_important', 'Not Important')">
-                        <div class="water-fill" style="height: {{ matrix.not_important.pct }}%; background: linear-gradient(180deg, rgba(163, 163, 163, 0.45) 0%, rgba(115, 115, 115, 0.35) 100%);"></div>
+                        <div class="water-fill water-not-important" data-height="{{ matrix.not_important.pct }}"></div>
                         <div class="relative z-10">
                             <div class="flex justify-between items-start mb-2 md:mb-4">
                                 <div>
@@ -582,7 +608,7 @@
 
                     <!-- Urgent (All) - Orange/Amber (Desktop: Row 3, Col 1) -->
                     <div class="matrix-card luxury-card rounded-xl md:rounded-2xl p-3 md:p-5 bg-gradient-to-br from-orange-100/70 to-amber-50/40 border-orange-200/60 hover:shadow-lg transition-all duration-300 relative overflow-hidden md:order-7" onclick="viewMatrixQuadrant('urgent', 'Urgent')">
-                        <div class="water-fill" style="height: {{ matrix.urgent.pct }}%; background: linear-gradient(180deg, rgba(251, 146, 60, 0.45) 0%, rgba(249, 115, 22, 0.35) 100%);"></div>
+                        <div class="water-fill water-urgent" data-height="{{ matrix.urgent.pct }}"></div>
                         <div class="relative z-10">
                             <div class="flex justify-between items-start mb-2 md:mb-4">
                                 <div>
@@ -598,7 +624,7 @@
 
                     <!-- Not Urgent (All) - Soft Teal/Green (Desktop: Row 3, Col 2) -->
                     <div class="matrix-card luxury-card rounded-xl md:rounded-2xl p-3 md:p-5 bg-gradient-to-br from-teal-50/70 to-green-50/40 border-teal-200/60 hover:shadow-lg transition-all duration-300 relative overflow-hidden md:order-8" onclick="viewMatrixQuadrant('not_urgent', 'Not Urgent')">
-                        <div class="water-fill" style="height: {{ matrix.not_urgent.pct }}%; background: linear-gradient(180deg, rgba(45, 212, 191, 0.45) 0%, rgba(20, 184, 166, 0.35) 100%);"></div>
+                        <div class="water-fill water-not-urgent" data-height="{{ matrix.not_urgent.pct }}"></div>
                         <div class="relative z-10">
                             <div class="flex justify-between items-start mb-2 md:mb-4">
                                 <div>
@@ -614,7 +640,7 @@
 
                     <!-- Total - Neutral Grey/Beige (Desktop: Row 3, Col 3) -->
                     <div class="matrix-card luxury-card rounded-xl md:rounded-2xl p-3 md:p-5 bg-gradient-to-br from-stone-100/50 to-neutral-50/30 border-stone-200/40 hover:shadow-lg transition-all duration-300 relative overflow-hidden col-span-2 md:col-span-1 md:order-9 cursor-pointer" id="matrixTotalCard" onclick="window.toggleMatrixMode()">
-                        <div class="water-fill" style="height: 100%; background: linear-gradient(180deg, rgba(168, 162, 158, 0.45) 0%, rgba(120, 113, 108, 0.35) 100%);"></div>
+                        <div class="water-fill water-total" data-height="100"></div>
                         <div class="relative z-10">
                             <div class="flex justify-between items-start mb-2 md:mb-4">
                                 <div>
@@ -1701,6 +1727,18 @@
 
         // Initialize on DOM load
         document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('[data-height]').forEach(el => {
+                const value = Number(el.dataset.height || 0);
+                if (Number.isFinite(value)) {
+                    el.style.height = `${value}%`;
+                }
+            });
+            document.querySelectorAll('[data-width]').forEach(el => {
+                const value = Number(el.dataset.width || 0);
+                if (Number.isFinite(value)) {
+                    el.style.width = `${value}%`;
+                }
+            });
             function setActiveNav(id) {
                 ['navHome','navMatrix','navTags','navGraphs','navFilter'].forEach(k => {
                     const el = document.getElementById(k);

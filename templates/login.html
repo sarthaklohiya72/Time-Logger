@@ -55,7 +55,13 @@
 
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Username, email, or user ID</label>
-                        <input name="identifier" autocomplete="username" required class="w-full px-4 py-3 rounded-2xl bg-white/80 border border-[rgba(148,126,86,0.35)] focus:outline-none focus:ring-2 focus:ring-amber-300 text-base" />
+                        <input id="loginIdentifier" name="identifier" autocomplete="username" required placeholder="name@gmail.com or TT-0001" class="w-full px-4 py-3 rounded-2xl bg-white/80 border border-[rgba(148,126,86,0.35)] focus:outline-none focus:ring-2 focus:ring-amber-300 text-base" />
+                        <div class="mt-2 flex flex-wrap gap-2 text-xs">
+                            <button type="button" class="email-domain-chip px-3 py-1.5 rounded-full bg-white/80 border border-[rgba(148,126,86,0.35)] text-gray-600 hover:bg-[#F7F1E6] transition-all" data-domain="gmail.com">@gmail.com</button>
+                            <button type="button" class="email-domain-chip px-3 py-1.5 rounded-full bg-white/80 border border-[rgba(148,126,86,0.35)] text-gray-600 hover:bg-[#F7F1E6] transition-all" data-domain="icloud.com">@icloud.com</button>
+                            <button type="button" class="email-domain-chip px-3 py-1.5 rounded-full bg-white/80 border border-[rgba(148,126,86,0.35)] text-gray-600 hover:bg-[#F7F1E6] transition-all" data-domain="outlook.com">@outlook.com</button>
+                            <button type="button" class="email-domain-chip px-3 py-1.5 rounded-full bg-white/80 border border-[rgba(148,126,86,0.35)] text-gray-600 hover:bg-[#F7F1E6] transition-all" data-domain="yahoo.com">@yahoo.com</button>
+                        </div>
                     </div>
 
                     <div>
@@ -88,5 +94,33 @@
             </div>
         </div>
     </main>
+    <script>
+        const loginIdentifier = document.getElementById('loginIdentifier');
+        if (loginIdentifier) {
+            const applyDomain = (domain) => {
+                const value = (loginIdentifier.value || '').trim();
+                if (!value) return;
+                if (value.includes('@')) {
+                    const local = value.split('@')[0];
+                    if (!local) return;
+                    loginIdentifier.value = `${local}@${domain}`;
+                    return;
+                }
+                loginIdentifier.value = `${value}@${domain}`;
+            };
+            loginIdentifier.addEventListener('blur', () => {
+                const value = (loginIdentifier.value || '').trim();
+                if (!value || !value.includes('@')) return;
+                const [local, domain] = value.split('@');
+                if (!local) return;
+                if (!domain) {
+                    loginIdentifier.value = `${local}@gmail.com`;
+                }
+            });
+            document.querySelectorAll('.email-domain-chip').forEach(chip => {
+                chip.addEventListener('click', () => applyDomain(chip.dataset.domain || 'gmail.com'));
+            });
+        }
+    </script>
 </body>
 </html>

@@ -141,7 +141,13 @@
                     </div>
                     <form method="POST" action="{{ url_for('auth.profile_request_otp') }}" class="mt-4 space-y-3">
                         <input type="hidden" name="purpose" value="change_email" />
-                        <input name="new_email" placeholder="New email" value="{{ pending_email or '' }}" class="w-full px-4 py-3 rounded-2xl bg-white border border-[rgba(148,126,86,0.35)] focus:outline-none focus:ring-2 focus:ring-amber-300 text-sm" />
+                        <input id="settingsEmail" name="new_email" placeholder="New email" value="{{ pending_email or '' }}" class="w-full px-4 py-3 rounded-2xl bg-white border border-[rgba(148,126,86,0.35)] focus:outline-none focus:ring-2 focus:ring-amber-300 text-sm" />
+                        <div class="flex flex-wrap gap-2 text-xs">
+                            <button type="button" class="email-domain-chip px-3 py-1.5 rounded-full bg-white/80 border border-[rgba(148,126,86,0.35)] text-gray-600 hover:bg-[#F7F1E6] transition-all" data-domain="gmail.com">@gmail.com</button>
+                            <button type="button" class="email-domain-chip px-3 py-1.5 rounded-full bg-white/80 border border-[rgba(148,126,86,0.35)] text-gray-600 hover:bg-[#F7F1E6] transition-all" data-domain="icloud.com">@icloud.com</button>
+                            <button type="button" class="email-domain-chip px-3 py-1.5 rounded-full bg-white/80 border border-[rgba(148,126,86,0.35)] text-gray-600 hover:bg-[#F7F1E6] transition-all" data-domain="outlook.com">@outlook.com</button>
+                            <button type="button" class="email-domain-chip px-3 py-1.5 rounded-full bg-white/80 border border-[rgba(148,126,86,0.35)] text-gray-600 hover:bg-[#F7F1E6] transition-all" data-domain="yahoo.com">@yahoo.com</button>
+                        </div>
                         <button type="submit" class="w-full py-3 rounded-2xl border border-[rgba(148,126,86,0.35)] text-gray-700 font-semibold bg-white/80 hover:bg-[#F7F1E6] transition-all">Send Verification Codes</button>
                     </form>
                     <form method="POST" action="{{ url_for('auth.update_profile') }}" class="mt-4 space-y-3">
@@ -201,5 +207,32 @@
             </div>
         {% endif %}
     </main>
+    <script>
+        const settingsEmail = document.getElementById('settingsEmail');
+        if (settingsEmail) {
+            const applyDomain = (domain) => {
+                const value = (settingsEmail.value || '').trim();
+                if (!value) return;
+                if (value.includes('@')) {
+                    const local = value.split('@')[0];
+                    settingsEmail.value = `${local}@${domain}`;
+                    return;
+                }
+                settingsEmail.value = `${value}@${domain}`;
+            };
+            settingsEmail.addEventListener('blur', () => {
+                const value = (settingsEmail.value || '').trim();
+                if (!value) return;
+                if (!value.includes('@')) {
+                    settingsEmail.value = `${value}@gmail.com`;
+                } else if (value.endsWith('@')) {
+                    settingsEmail.value = `${value}gmail.com`;
+                }
+            });
+            document.querySelectorAll('.email-domain-chip').forEach(chip => {
+                chip.addEventListener('click', () => applyDomain(chip.dataset.domain || 'gmail.com'));
+            });
+        }
+    </script>
 </body>
 </html>
