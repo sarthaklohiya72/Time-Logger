@@ -38,6 +38,7 @@ def fetch_local_data(db_name: str, user_id: int) -> pd.DataFrame:
                 "task": row["task"],
                 "duration": row["duration"],
                 "tag": tag_value,
+                "raw_tag": row["tags"],
                 "primary_tag": primary_tag,
                 "special_tags": special_tags,
                 "urgent": bool(row["urg"]),

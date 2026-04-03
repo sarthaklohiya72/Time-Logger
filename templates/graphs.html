@@ -49,6 +49,26 @@
             box-shadow: 0 20px 40px rgba(17, 24, 39, 0.7);
             filter: brightness(1.03);
         }
+        .secondary-cta {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.55rem 1.4rem;
+            border-radius: 9999px;
+            background: rgba(255, 255, 255, 0.75);
+            color: #111827;
+            font-size: 0.85rem;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+            border: 1px solid rgba(148, 126, 86, 0.35);
+            box-shadow: 0 12px 24px rgba(148, 126, 86, 0.2);
+            transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+        }
+        .secondary-cta:hover {
+            background: #F7F1E6;
+            transform: translateY(-1px);
+            box-shadow: 0 16px 28px rgba(148, 126, 86, 0.3);
+        }
         .soft-pill {
             background: rgba(255, 255, 255, 0.7);
             border: 1px solid rgba(148, 126, 86, 0.28);
@@ -57,6 +77,10 @@
             background: linear-gradient(135deg, #F8D574, #F5B826);
             color: #111827;
             box-shadow: 0 12px 26px rgba(185, 132, 40, 0.35);
+        }
+        .modal-backdrop {
+            background: rgba(15, 23, 42, 0.55);
+            backdrop-filter: blur(6px);
         }
     </style>
 </head>
@@ -98,28 +122,31 @@
         <div class="luxury-card rounded-2xl md:rounded-3xl p-4 md:p-8 mb-6 md:mb-8">
             <div class="space-y-5 md:space-y-0 md:grid md:gap-6 md:grid-cols-[1.2fr_1fr]">
                 <div>
-                    <label class="block text-xs md:text-sm font-medium text-gray-700 mb-3">What do you want to track?</label>
-                    <div class="relative">
-                        <button id="metricSelectBtn" class="w-full px-4 py-3 rounded-2xl bg-white/80 border border-[rgba(148,126,86,0.35)] text-left text-sm md:text-base text-gray-900 font-medium flex items-center justify-between hover:bg-[#F7F1E6] transition-all">
-                            <span id="metricSelectLabel">Work</span>
-                            <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                            </svg>
-                        </button>
-                        <div id="metricSelectMenu" class="hidden absolute z-50 w-full mt-2 bg-white rounded-2xl shadow-2xl border border-[rgba(148,126,86,0.35)] max-h-80 overflow-y-auto">
-                            <div class="metric-option px-4 py-3 hover:bg-[#F7F1E6] cursor-pointer text-sm transition-colors" data-value="important">Important</div>
-                            <div class="metric-option px-4 py-3 hover:bg-[#F7F1E6] cursor-pointer text-sm transition-colors" data-value="total">Total time</div>
-                            <div class="metric-option px-4 py-3 hover:bg-[#F7F1E6] cursor-pointer text-sm transition-colors" data-value="urgent">Urgent</div>
-                            <div class="metric-option px-4 py-3 hover:bg-[#F7F1E6] cursor-pointer text-sm transition-colors border-t border-gray-100" data-value="q1">Important & Urgent (Critical)</div>
-                            <div class="metric-option px-4 py-3 hover:bg-[#F7F1E6] cursor-pointer text-sm transition-colors" data-value="q2">Important & Not Urgent (Growth)</div>
-                            <div class="metric-option px-4 py-3 hover:bg-[#F7F1E6] cursor-pointer text-sm transition-colors" data-value="q3">Urgent & Not Important (Drudgery)</div>
-                            <div class="metric-option px-4 py-3 hover:bg-[#F7F1E6] cursor-pointer text-sm transition-colors" data-value="q4">Not Urgent & Not Important (Waste)</div>
-                            <div class="metric-option px-4 py-3 hover:bg-[#F7F1E6] cursor-pointer text-sm transition-colors border-t border-gray-100" data-value="work">Work</div>
-                            <div class="metric-option px-4 py-3 hover:bg-[#F7F1E6] cursor-pointer text-sm transition-colors" data-value="necessity">Necessity</div>
-                            <div class="metric-option px-4 py-3 hover:bg-[#F7F1E6] cursor-pointer text-sm transition-colors" data-value="soul">Soul</div>
-                            <div class="metric-option px-4 py-3 hover:bg-[#F7F1E6] cursor-pointer text-sm transition-colors" data-value="rest">Rest</div>
-                            <div class="metric-option px-4 py-3 hover:bg-[#F7F1E6] cursor-pointer text-sm transition-colors" data-value="waste">Waste</div>
+                    <label class="block text-xs md:text-sm font-medium text-gray-700 mb-3">Graph focus</label>
+                    <div class="space-y-3">
+                        <div class="flex flex-col lg:flex-row gap-3">
+                            <input id="graphSearchInput" type="text" class="flex-1 px-4 py-3 rounded-2xl bg-white/80 border border-[rgba(148,126,86,0.35)] text-sm md:text-base text-gray-900 focus:outline-none focus:ring-2 focus:ring-amber-300" placeholder="sleep, rest · work · important and not work · workout or yoga">
+                            <select id="graphFocusSelect" class="px-4 py-3 rounded-2xl bg-white/80 border border-[rgba(148,126,86,0.35)] text-sm md:text-base text-gray-900 font-medium focus:outline-none focus:ring-2 focus:ring-amber-300">
+                                <option value="work" selected>Work</option>
+                                <option value="necessity">Necessity</option>
+                                <option value="soul">Soul</option>
+                                <option value="rest">Rest</option>
+                                <option value="waste">Waste</option>
+                                <option value="important">Important</option>
+                                <option value="urgent">Urgent</option>
+                                <option value="q1">Important & Urgent (Critical)</option>
+                                <option value="q2">Important & Not Urgent (Growth)</option>
+                                <option value="q3">Urgent & Not Important (Drudgery)</option>
+                                <option value="q4">Not Urgent & Not Important (Waste)</option>
+                                <option value="total">Total time</option>
+                                <option value="custom">Custom search</option>
+                            </select>
                         </div>
+                        <div class="flex flex-wrap gap-2">
+                            <button id="graphSearchApply" class="primary-cta text-sm md:text-base">Apply</button>
+                            <button id="graphSearchClear" class="secondary-cta text-sm md:text-base">Clear</button>
+                        </div>
+                        <p class="text-xs text-gray-500">Pick a preset focus or switch to Custom search to type your own. Use commas or "or" for alternatives, "and" for strict matches, and "not" to exclude.</p>
                     </div>
                 </div>
                 <div>
@@ -148,7 +175,10 @@
                     <h3 class="text-lg md:text-xl font-semibold text-gray-900" id="chartTitle">Work</h3>
                     <p class="text-xs md:text-sm text-gray-500" id="chartSubtitle">Last 30 days · 7-day avg</p>
                 </div>
-                <button id="refreshGraph" class="primary-cta text-sm md:text-base px-4 md:px-6 py-2 md:py-3">Refresh</button>
+                <div class="flex flex-wrap items-center gap-2">
+                    <button id="reviewGraphTasks" class="secondary-cta text-sm md:text-base hidden">Review tasks</button>
+                    <button id="refreshGraph" class="primary-cta text-sm md:text-base px-4 md:px-6 py-2 md:py-3">Refresh</button>
+                </div>
             </div>
             <div class="relative" style="height: 280px;">
                 <canvas id="graphCanvas"></canvas>
@@ -170,6 +200,21 @@
             </div>
         </div>
     </main>
+
+    <div id="graphTaskModal" class="fixed inset-0 z-50 hidden items-center justify-center px-4">
+        <div class="modal-backdrop absolute inset-0"></div>
+        <div class="relative w-full max-w-3xl rounded-3xl border border-[rgba(148,126,86,0.25)] bg-[#FFFDF8] p-6 md:p-8 shadow-2xl">
+            <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                <div>
+                    <h4 class="text-lg md:text-xl font-semibold text-gray-900">Tasks in this graph</h4>
+                    <p class="text-xs md:text-sm text-gray-500 mt-1" id="graphTasksSubtitle">Review and exclude any tasks you don’t want included.</p>
+                </div>
+                <button id="closeGraphTasks" class="secondary-cta text-xs md:text-sm">Close</button>
+            </div>
+            <div id="graphTasksList" class="mt-5 space-y-3 max-h-[55vh] overflow-y-auto pr-1"></div>
+            <div id="graphTasksEmpty" class="mt-5 text-sm text-gray-500 hidden">No tasks match this search.</div>
+        </div>
+    </div>
 
     <script>
         const metricColors = {
@@ -206,15 +251,25 @@
         let chartInstance = null;
         let currentMetric = 'work';
         let maWindow = 7;
+        let graphSearchQuery = '';
+        let graphExcludedIds = new Set();
+        let graphTasks = [];
 
-        const metricSelectBtn = document.getElementById('metricSelectBtn');
-        const metricSelectLabel = document.getElementById('metricSelectLabel');
-        const metricSelectMenu = document.getElementById('metricSelectMenu');
         const chartTitle = document.getElementById('chartTitle');
         const chartSubtitle = document.getElementById('chartSubtitle');
         const totalHoursEl = document.getElementById('totalHours');
         const avgHoursEl = document.getElementById('avgHours');
         const maxHoursEl = document.getElementById('maxHours');
+        const graphSearchInput = document.getElementById('graphSearchInput');
+        const graphSearchApply = document.getElementById('graphSearchApply');
+        const graphSearchClear = document.getElementById('graphSearchClear');
+        const graphFocusSelect = document.getElementById('graphFocusSelect');
+        const reviewGraphTasks = document.getElementById('reviewGraphTasks');
+        const graphTaskModal = document.getElementById('graphTaskModal');
+        const graphTasksList = document.getElementById('graphTasksList');
+        const graphTasksEmpty = document.getElementById('graphTasksEmpty');
+        const graphTasksSubtitle = document.getElementById('graphTasksSubtitle');
+        const closeGraphTasks = document.getElementById('closeGraphTasks');
 
         function formatHours(value) {
             const num = Number(value) || 0;
@@ -335,14 +390,100 @@
             maxHoursEl.textContent = formatHours(max_hours);
 
             const label = metricLabels[metricKey] || 'Total time';
-            chartTitle.textContent = label;
-            chartSubtitle.textContent = `Last ${currentDays} days · ${maWindow}-day avg`;
+            if (graphFocusSelect.value === 'custom' && graphSearchQuery) {
+                chartTitle.textContent = `Search: ${graphSearchQuery}`;
+            } else {
+                chartTitle.textContent = label;
+            }
+            const subtitleParts = [`Last ${currentDays} days`, `${maWindow}-day avg`];
+            if (graphSearchQuery || graphExcludedIds.size) {
+                subtitleParts.push('Filtered');
+            }
+            chartSubtitle.textContent = subtitleParts.join(' · ');
         }
 
-        async function fetchGraphData() {
+        function buildGraphUrl(includeTasks = false) {
+            const params = new URLSearchParams();
+            params.set('metric', currentMetric);
+            params.set('days', String(currentDays));
+            params.set('end', getEndDate());
+            if (graphSearchQuery) {
+                params.set('search', graphSearchQuery);
+            }
+            if (includeTasks) {
+                params.set('include_tasks', 'true');
+            }
+            if (graphExcludedIds.size) {
+                params.set('exclude', Array.from(graphExcludedIds).join(','));
+            }
+            return `/api/graph-data?${params.toString()}`;
+        }
+
+        function openGraphTaskModal() {
+            graphTaskModal.classList.remove('hidden');
+            graphTaskModal.classList.add('flex');
+        }
+
+        function closeGraphTaskModal() {
+            graphTaskModal.classList.add('hidden');
+            graphTaskModal.classList.remove('flex');
+        }
+
+        function updateReviewButton() {
+            const showButton = graphSearchQuery.length > 0 || graphExcludedIds.size > 0;
+            if (showButton) {
+                reviewGraphTasks.classList.remove('hidden');
+                const countLabel = graphTasks.length ? ` (${graphTasks.length})` : '';
+                reviewGraphTasks.textContent = `Review tasks${countLabel}`;
+            } else {
+                reviewGraphTasks.classList.add('hidden');
+                reviewGraphTasks.textContent = 'Review tasks';
+            }
+        }
+
+        function renderGraphTasks() {
+            graphTasksList.innerHTML = '';
+            if (!graphTasks.length) {
+                graphTasksEmpty.classList.remove('hidden');
+                graphTasksSubtitle.textContent = 'No tasks match this search.';
+                return;
+            }
+            graphTasksEmpty.classList.add('hidden');
+            const excludedText = graphExcludedIds.size ? ` · ${graphExcludedIds.size} removed` : '';
+            graphTasksSubtitle.textContent = `Showing ${graphTasks.length} tasks${excludedText}.`;
+            graphTasks.forEach(task => {
+                const row = document.createElement('div');
+                row.className = 'flex flex-col md:flex-row md:items-center md:justify-between gap-3 rounded-2xl border border-[rgba(148,126,86,0.2)] bg-white/80 px-4 py-3 shadow-sm';
+                const tags = task.tag || task.raw_tag || 'No tags';
+                const flags = [];
+                if (task.important) flags.push('Important');
+                if (task.urgent) flags.push('Urgent');
+                row.innerHTML = `
+                    <div>
+                        <div class="text-sm font-semibold text-gray-900">${task.task || 'Untitled task'}</div>
+                        <div class="text-xs text-gray-500 mt-1">${task.date} · ${task.start_time} - ${task.end_time} · ${Number(task.duration_hours || 0).toFixed(2)}h</div>
+                        <div class="text-xs text-gray-500 mt-1">Tags: ${tags}</div>
+                        ${flags.length ? `<div class="flex flex-wrap gap-2 mt-2">${flags.map(flag => `<span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">${flag}</span>`).join('')}</div>` : ''}
+                    </div>
+                    <button class="secondary-cta text-xs md:text-sm" data-task-id="${task.id}">Remove</button>
+                `;
+                const removeBtn = row.querySelector('button');
+                if (removeBtn) {
+                    removeBtn.addEventListener('click', () => {
+                        if (task.id) {
+                            graphExcludedIds.add(task.id);
+                            fetchGraphData({ includeTasks: true, openModal: true });
+                        }
+                    });
+                }
+                graphTasksList.appendChild(row);
+            });
+        }
+
+        async function fetchGraphData({ includeTasks = false, openModal = false } = {}) {
             const metricKey = currentMetric;
-            const end = getEndDate();
-            const url = `/api/graph-data?metric=${encodeURIComponent(metricKey)}&days=${currentDays}&end=${end}`;
+            const shouldIncludeTasks = includeTasks || graphSearchQuery.length > 0 || graphExcludedIds.size > 0;
+            const url = buildGraphUrl(shouldIncludeTasks);
             try {
                 const response = await fetch(url, { credentials: 'include' });
                 if (response.status === 401) {
@@ -353,27 +494,48 @@
                 if (!response.ok) throw new Error(`HTTP ${response.status}`);
                 const data = await response.json();
                 updateChart(data, metricKey);
+                if (shouldIncludeTasks) {
+                    graphTasks = Array.isArray(data.tasks) ? data.tasks : [];
+                    updateReviewButton();
+                    renderGraphTasks();
+                } else {
+                    graphTasks = [];
+                    updateReviewButton();
+                }
+                if (openModal && shouldIncludeTasks) {
+                    openGraphTaskModal();
+                }
             } catch (e) {
                 console.error('Failed to load graph data', e);
             }
         }
 
-        metricSelectBtn.addEventListener('click', () => {
-            metricSelectMenu.classList.toggle('hidden');
-        });
+        function applyPresetFocus(value) {
+            currentMetric = value;
+            graphSearchQuery = '';
+            graphExcludedIds = new Set();
+            graphSearchInput.value = metricLabels[value] || value;
+            graphSearchInput.setAttribute('disabled', 'disabled');
+            graphSearchInput.classList.add('opacity-60', 'cursor-not-allowed');
+            fetchGraphData();
+        }
 
-        document.querySelectorAll('.metric-option').forEach(option => {
-            option.addEventListener('click', () => {
-                currentMetric = option.dataset.value;
-                metricSelectLabel.textContent = option.textContent;
-                metricSelectMenu.classList.add('hidden');
-                fetchGraphData();
-            });
-        });
+        function applyCustomFocus() {
+            currentMetric = 'total';
+            graphSearchQuery = '';
+            graphExcludedIds = new Set();
+            graphSearchInput.removeAttribute('disabled');
+            graphSearchInput.classList.remove('opacity-60', 'cursor-not-allowed');
+            graphSearchInput.value = '';
+            graphSearchInput.focus();
+            fetchGraphData();
+        }
 
-        document.addEventListener('click', (e) => {
-            if (!e.target.closest('#metricSelectBtn') && !e.target.closest('#metricSelectMenu')) {
-                metricSelectMenu.classList.add('hidden');
+        graphFocusSelect.addEventListener('change', () => {
+            if (graphFocusSelect.value === 'custom') {
+                applyCustomFocus();
+            } else {
+                applyPresetFocus(graphFocusSelect.value);
             }
         });
         document.querySelectorAll('.range-pill').forEach(btn => {
@@ -396,8 +558,62 @@
 
         document.getElementById('refreshGraph').addEventListener('click', fetchGraphData);
 
-        currentMetric = 'work';
-        fetchGraphData();
+        graphSearchApply.addEventListener('click', () => {
+            if (graphFocusSelect.value === 'custom') {
+                graphSearchQuery = (graphSearchInput.value || '').trim();
+                graphExcludedIds = new Set();
+                fetchGraphData({ includeTasks: true });
+            } else {
+                applyPresetFocus(graphFocusSelect.value);
+            }
+        });
+
+        graphSearchInput.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                graphSearchApply.click();
+            }
+        });
+
+        graphSearchClear.addEventListener('click', () => {
+            graphExcludedIds = new Set();
+            if (graphFocusSelect.value === 'custom') {
+                graphSearchInput.value = '';
+                graphSearchQuery = '';
+                fetchGraphData();
+            } else {
+                graphSearchQuery = '';
+                applyPresetFocus(graphFocusSelect.value);
+            }
+        });
+
+        reviewGraphTasks.addEventListener('click', () => {
+            if (!graphTasks.length) {
+                fetchGraphData({ includeTasks: true, openModal: true });
+            } else {
+                openGraphTaskModal();
+            }
+        });
+
+        closeGraphTasks.addEventListener('click', closeGraphTaskModal);
+
+        graphTaskModal.addEventListener('click', (event) => {
+            if (event.target === graphTaskModal || event.target.classList.contains('modal-backdrop')) {
+                closeGraphTaskModal();
+            }
+        });
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' && !graphTaskModal.classList.contains('hidden')) {
+                closeGraphTaskModal();
+            }
+        });
+
+        if (graphFocusSelect.value === 'custom') {
+            applyCustomFocus();
+        } else {
+            applyPresetFocus(graphFocusSelect.value);
+        }
     </script>
 </body>
 </html>

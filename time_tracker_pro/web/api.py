@@ -3,9 +3,10 @@ from __future__ import annotations
 import csv
 import logging
 import os
+import re
 from datetime import timedelta
 from io import BytesIO, StringIO
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import pandas as pd
 from flask import Blueprint, current_app, g, jsonify, request, send_file
@@ -26,6 +27,76 @@ bp = Blueprint("api", __name__)
 logger = logging.getLogger(__name__)
 
 
+def parse_graph_search(raw: str) -> List[List[Tuple[str, bool]]]:
+    cleaned = re.sub(r"\s+", " ", (raw or "").strip().lower())
+    if not cleaned:
+        return []
+    cleaned = cleaned.replace(",", " or ")
+    groups: List[List[Tuple[str, bool]]] = []
+    for chunk in re.split(r"\s+or\s+", cleaned):
+        chunk = chunk.strip()
+        if not chunk:
+            continue
+        group: List[Tuple[str, bool]] = []
+        for part in re.split(r"\s+and\s+", chunk):
+            part = part.strip()
+            if not part:
+                continue
+            match = re.match(r"^(?:if\s+not|not)\s+(.+)$", part)
+            if match and match.group(1):
+                term = match.group(1).strip()
+                if term:
+                    group.append((term, True))
+                continue
+            group.append((part, False))
+        if group:
+            groups.append(group)
+    return groups
+
+
+def graph_term_matches(row: pd.Series, term: str) -> bool:
+    clean = str(term or "").strip().lower()
+    if not clean:
+        return False
+    if clean in {"imp", "important"}:
+        return bool(row.get("important"))
+    if clean in {"urg", "urgent"}:
+        return bool(row.get("urgent"))
+    haystacks = [
+        row.get("task"),
+        row.get("tag"),
+        row.get("raw_tag"),
+        row.get("primary_tag"),
+    ]
+    special_tags = row.get("special_tags")
+    if isinstance(special_tags, list) and special_tags:
+        haystacks.append(" ".join([str(tag) for tag in special_tags if tag]))
+    for value in haystacks:
+        if clean in str(value or "").lower():
+            return True
+    return False
+
+
+def graph_row_matches(row: pd.Series, groups: List[List[Tuple[str, bool]]]) -> bool:
+    if not groups:
+        return True
+    for group in groups:
+        matched = True
+        for term, negated in group:
+            term_match = graph_term_matches(row, term)
+            if negated:
+                if term_match:
+                    matched = False
+                    break
+            else:
+                if not term_match:
+                    matched = False
+                    break
+        if matched:
+            return True
+    return False
+
+
 @bp.route("/api/graph-data", endpoint="graph_data")
 @api_or_login_required
 def graph_data():
@@ -33,6 +104,9 @@ def graph_data():
     user_id = int(getattr(g, "user_id", 0) or 0)
 
     metric = (request.args.get("metric") or "total").strip().lower()
+    search = (request.args.get("search") or "").strip()
+    include_tasks = (request.args.get("include_tasks") or "").strip().lower() in {"1", "true", "yes"}
+    raw_exclude = (request.args.get("exclude") or "").strip()
     raw_days = request.args.get("days") or "30"
     try:
         days = max(1, min(int(raw_days), 365))
@@ -76,6 +150,23 @@ def graph_data():
     elif metric == "q4":
         df = df[(~df["urgent"]) & (~df["important"])]
 
+    if search:
+        search_groups = parse_graph_search(search)
+        if search_groups:
+            df = df[df.apply(lambda row: graph_row_matches(row, search_groups), axis=1)]
+
+    if raw_exclude:
+        try:
+            excluded_ids = {
+                int(item)
+                for item in re.split(r"[\s,]+", raw_exclude)
+                if item and str(item).strip().isdigit()
+            }
+        except Exception:
+            excluded_ids = set()
+        if excluded_ids:
+            df = df[~df["id"].isin(excluded_ids)]
+
     daily = df.groupby("date")["duration"].sum() if not df.empty else {}
     labels: List[str] = []
     values: List[float] = []
@@ -89,7 +180,36 @@ def graph_data():
     avg_hours = round(total_hours / days, 2) if days else 0
     max_hours = round(max(values) if values else 0, 2)
 
-    return jsonify({"labels": labels, "values": values, "total_hours": total_hours, "avg_hours": avg_hours, "max_hours": max_hours})
+    tasks: List[Dict[str, Any]] = []
+    if include_tasks and not df.empty:
+        for _, row in df.iterrows():
+            minutes = int(row.get("duration") or 0)
+            tasks.append(
+                {
+                    "id": int(row.get("id") or 0),
+                    "task": row.get("task") or "",
+                    "date": str(row.get("date") or ""),
+                    "start_time": row.get("start_time") or "",
+                    "end_time": row.get("end_time") or "",
+                    "duration_minutes": minutes,
+                    "duration_hours": round(minutes / 60.0, 2),
+                    "tag": row.get("tag") or "",
+                    "raw_tag": row.get("raw_tag") or "",
+                    "important": bool(row.get("important")),
+                    "urgent": bool(row.get("urgent")),
+                }
+            )
+
+    return jsonify(
+        {
+            "labels": labels,
+            "values": values,
+            "total_hours": total_hours,
+            "avg_hours": avg_hours,
+            "max_hours": max_hours,
+            "tasks": tasks,
+        }
+    )
 
 
 @bp.route("/api/tasks", endpoint="get_tasks")

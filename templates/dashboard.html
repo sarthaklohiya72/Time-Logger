@@ -351,9 +351,9 @@
 
             <!-- Week Selector (only show for day/week views) -->
             {% if period == 'day' or period == 'week' %}
-            <div class="flex justify-start gap-6 overflow-x-auto pb-2">
+            <div id="weekScroller" class="flex justify-start gap-6 overflow-x-auto pb-2 scroll-smooth scroll-px-6">
                 {% for day in week_days %}
-                <a href="/?date={{ day.full_str }}&period={{ period }}" class="flex flex-col items-center min-w-[56px] group">
+                <a href="/?date={{ day.full_str }}&period={{ period }}" class="flex flex-col items-center min-w-[56px] group" {% if day.is_selected %}data-selected-day="true"{% endif %}>
                     <span class="text-xs font-medium uppercase mb-3 tracking-wider
                         {% if day.is_selected %} text-gray-900 {% else %} text-gray-400 group-hover:text-gray-600 {% endif %}">
                         {{ day.day_name }}
@@ -381,12 +381,16 @@
         {% set top_quad_pct = matrix.q1.pct %}
         {% set top_quad_hours = matrix.q1.hours %}
         {% set top_quad_key = 'q1' %}
+        {% set top_quad_badge_class = 'bg-[#FEF3C7] text-[#92400E] border-amber-200' %}
+        {% set top_quad_bar_class = 'from-[#F59E0B] via-[#FBBF24] to-[#FDE68A]' %}
         {% if matrix.q2.pct > top_quad_pct %}
             {% set top_quad_label = 'Growth' %}
             {% set top_quad_sub = 'Important & Not Urgent' %}
             {% set top_quad_pct = matrix.q2.pct %}
             {% set top_quad_hours = matrix.q2.hours %}
             {% set top_quad_key = 'q2' %}
+            {% set top_quad_badge_class = 'bg-[#ECFDF3] text-[#047857] border-emerald-200' %}
+            {% set top_quad_bar_class = 'from-[#22C55E] via-[#A3E635] to-[#FACC15]' %}
         {% endif %}
         {% if matrix.q3.pct > top_quad_pct %}
             {% set top_quad_label = 'Drudgery' %}
@@ -394,6 +398,8 @@
             {% set top_quad_pct = matrix.q3.pct %}
             {% set top_quad_hours = matrix.q3.hours %}
             {% set top_quad_key = 'q3' %}
+            {% set top_quad_badge_class = 'bg-[#EEF2F7] text-[#475569] border-slate-200' %}
+            {% set top_quad_bar_class = 'from-[#94A3B8] via-[#CBD5E1] to-[#E2E8F0]' %}
         {% endif %}
         {% if matrix.q4.pct > top_quad_pct %}
             {% set top_quad_label = 'Waste' %}
@@ -401,6 +407,8 @@
             {% set top_quad_pct = matrix.q4.pct %}
             {% set top_quad_hours = matrix.q4.hours %}
             {% set top_quad_key = 'q4' %}
+            {% set top_quad_badge_class = 'bg-[#FEE2E2] text-[#B91C1C] border-rose-200' %}
+            {% set top_quad_bar_class = 'from-[#F87171] via-[#FB7185] to-[#FECACA]' %}
         {% endif %}
         <div class="md:hidden mb-6">
             <div class="luxury-card rounded-2xl p-5 flex items-center justify-between cursor-pointer" data-filter="{{ top_quad_key }}" data-title="{{ top_quad_label }}" data-chart="tasks" role="button">
@@ -409,7 +417,7 @@
                     <div class="mt-2 text-2xl font-light text-gray-900"><span class="js-hover-hours js-summary-hours" data-summary-hours data-total-hours="{{ top_quad_hours }}" data-hours="{{ top_quad_hours }}">{{ top_quad_hours }}h</span></div>
                     <div class="text-[11px] text-gray-500 mt-1">{{ top_quad_sub }} · {{ top_quad_pct }}%</div>
                 </div>
-                <span class="inline-flex h-9 px-3 items-center rounded-full bg-[#ECFDF3] text-[11px] font-medium tracking-wide text-[#047857] border border-emerald-200">
+                <span class="inline-flex h-9 px-3 items-center rounded-full text-[11px] font-medium tracking-wide border {{ top_quad_badge_class }}">
                     {{ top_quad_label }}
                 </span>
             </div>
@@ -452,12 +460,12 @@
                         <div class="text-xs font-semibold tracking-[0.16em] text-gray-400 uppercase">Dominant quadrant</div>
                         <div class="mt-2 text-3xl font-light text-gray-900"><span class="js-hover-hours js-summary-hours" data-summary-hours data-total-hours="{{ top_quad_hours }}" data-hours="{{ top_quad_hours }}">{{ top_quad_hours }}h</span></div>
                     </div>
-                    <span class="inline-flex h-9 px-3 items-center rounded-full bg-[#ECFDF3] text-[11px] font-medium tracking-wide text-[#047857] border border-emerald-200">
+                    <span class="inline-flex h-9 px-3 items-center rounded-full text-[11px] font-medium tracking-wide border {{ top_quad_badge_class }}">
                         {{ top_quad_label }}
                     </span>
                 </div>
                 <div class="w-full h-2 rounded-full bg-[#E7D8C2] overflow-hidden">
-                    <div class="h-full rounded-full bg-gradient-to-r from-[#22C55E] via-[#A3E635] to-[#FACC15]" style="width: {{ top_quad_pct }}%"></div>
+                    <div class="h-full rounded-full bg-gradient-to-r {{ top_quad_bar_class }}" style="width: {{ top_quad_pct }}%"></div>
                 </div>
                 <div class="mt-3 text-xs text-gray-500">{{ top_quad_sub }} · {{ top_quad_pct }}% share.</div>
             </div>
@@ -720,6 +728,15 @@
         window.changeDate = function(date) {
             window.location.href = `/?date=${date}&period=${window.currentPeriod}`;
         };
+
+        window.addEventListener('load', () => {
+            const scroller = document.getElementById('weekScroller');
+            if (!scroller || window.innerWidth >= 640) return;
+            const selected = scroller.querySelector('[data-selected-day="true"]');
+            if (!selected) return;
+            const targetLeft = selected.offsetLeft - (scroller.clientWidth / 2) + (selected.clientWidth / 2);
+            scroller.scrollTo({ left: Math.max(0, targetLeft), behavior: 'smooth' });
+        });
 
         window.toggleDatePicker = function() {
             const dropdown = document.getElementById('dateDropdown');
