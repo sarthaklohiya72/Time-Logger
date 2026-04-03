@@ -45,6 +45,8 @@ def _icon_storage_path() -> Path:
 @bp.route("/settings", methods=["GET", "POST"], endpoint="settings")
 @login_required
 def settings():
+    from ..repositories.sheety_accounts import get_user_api_accounts
+    
     db_name = current_app.config["DB_NAME"]
     user_id = int(get_current_user_id() or 0)
     current = get_user_settings(db_name, user_id)
@@ -78,6 +80,9 @@ def settings():
         "user_id": row_value(user_row, "user_id") if user_row else "",
         "name": row_value(user_row, "name") if user_row else "",
     }
+    
+    # Get API accounts for this user
+    api_accounts = get_user_api_accounts(db_name, user_id)
 
     return render_template(
         "settings.html",
@@ -86,6 +91,7 @@ def settings():
         profile_info=profile_info,
         env_sheety=env_sheety,
         is_admin=is_admin,
+        api_accounts=api_accounts,
         icon_error=request.args.get("icon_error"),
         icon_success=request.args.get("icon_success"),
         profile_error=session.pop("profile_error", None),

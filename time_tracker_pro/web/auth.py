@@ -166,10 +166,15 @@ def register():
         email = (request.form.get("email") or "").strip().lower()
         public_user_id = (request.form.get("user_id") or "").strip()
         password = request.form.get("password") or ""
+        confirm_password = request.form.get("confirm_password") or ""
         remember = bool(request.form.get("remember"))
 
         if not name or not email or not public_user_id or not password:
             error = "Name, email, user ID, and password are required."
+        elif password != confirm_password:
+            error = "Passwords do not match."
+        elif len(password) < 8:
+            error = "Password must be at least 8 characters."
         elif "@" not in email or "." not in email:
             error = "Please provide a valid email address."
         elif get_user_by_public_id(db_name, public_user_id) or get_user_by_username_or_id_or_email(db_name, public_user_id):

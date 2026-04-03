@@ -1572,19 +1572,23 @@
                 const showMobileLegend = isModalMobile;
 
                 const mobileLegendEl = document.getElementById('mobileModalLegend');
-                if (mobileLegendEl) {
-                    if (showMobileLegend) {
+                const updateMobileLegend = (chart) => {
+                    if (mobileLegendEl && showMobileLegend) {
                         mobileLegendEl.innerHTML = labels.map((label, idx) => {
                             const color = colors[idx] || '#9CA3AF';
-                            return `<span class="inline-flex items-center gap-1">
+                            const isHidden = chart ? !chart.getDataVisibility(idx) : false;
+                            const textDecoration = isHidden ? 'line-through' : 'none';
+                            const opacity = isHidden ? '0.5' : '1';
+                            return `<span class="inline-flex items-center gap-1 cursor-pointer hover:opacity-70 transition-opacity" data-legend-idx="${idx}" style="opacity:${opacity}">
                                 <span class="inline-block w-2.5 h-2.5 rounded-full" style="background:${color}"></span>
-                                ${label}
+                                <span style="text-decoration:${textDecoration}">${label}</span>
                             </span>`;
                         }).join('');
-                    } else {
+                    } else if (mobileLegendEl) {
                         mobileLegendEl.innerHTML = '';
                     }
-                }
+                };
+                updateMobileLegend(null);
                 const legendLabelOptions = {
                     font: { family: 'Inter', size: 11, weight: '500' },
                     padding: 14,
@@ -1669,6 +1673,7 @@
                                     } else {
                                         delete window.hiddenTags[label];
                                     }
+                                    updateMobileLegend(ci);
                                     window.renderModalTasks();
                                 }
                             },
@@ -1712,10 +1717,33 @@
                             } else {
                                 delete window.hiddenTags[label];
                             }
+                            updateMobileLegend(chart);
                             window.renderModalTasks();
                         }
                     }
                 });
+                
+                // Mobile legend click handler
+                if (mobileLegendEl) {
+                    mobileLegendEl.addEventListener('click', (e) => {
+                        const legendItem = e.target.closest('[data-legend-idx]');
+                        if (!legendItem) return;
+                        const index = parseInt(legendItem.dataset.legendIdx, 10);
+                        if (!Number.isFinite(index)) return;
+                        const label = chart.data.labels[index];
+                        const currentlyVisible = chart.getDataVisibility(index) !== false;
+                        chart.toggleDataVisibility(index);
+                        chart.update();
+                        if (!window.hiddenTags) window.hiddenTags = {};
+                        if (currentlyVisible) {
+                            window.hiddenTags[label] = true;
+                        } else {
+                            delete window.hiddenTags[label];
+                        }
+                        updateMobileLegend(chart);
+                        window.renderModalTasks();
+                    });
+                }
             }
             window.renderModalTasks();
             document.getElementById('taskModal').classList.add('active');

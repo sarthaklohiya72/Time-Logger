@@ -69,7 +69,36 @@
 
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
-                        <input type="password" name="password" autocomplete="new-password" required class="w-full px-4 py-3 rounded-2xl bg-white/80 border border-[rgba(148,126,86,0.35)] focus:outline-none focus:ring-2 focus:ring-amber-300 text-base" />
+                        <div class="relative">
+                            <input id="registerPassword" type="password" name="password" autocomplete="new-password" required minlength="8" class="w-full px-4 py-3 pr-12 rounded-2xl bg-white/80 border border-[rgba(148,126,86,0.35)] focus:outline-none focus:ring-2 focus:ring-amber-300 text-base" />
+                            <button type="button" id="toggleRegisterPassword" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors" aria-label="Toggle password visibility">
+                                <svg id="eyeIconRegister" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                </svg>
+                                <svg id="eyeSlashIconRegister" class="w-5 h-5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"></path>
+                                </svg>
+                            </button>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-2">At least 8 characters</p>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Confirm Password</label>
+                        <div class="relative">
+                            <input id="confirmPassword" type="password" name="confirm_password" autocomplete="new-password" required minlength="8" class="w-full px-4 py-3 pr-12 rounded-2xl bg-white/80 border border-[rgba(148,126,86,0.35)] focus:outline-none focus:ring-2 focus:ring-amber-300 text-base" />
+                            <button type="button" id="toggleConfirmPassword" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors" aria-label="Toggle password visibility">
+                                <svg id="eyeIconConfirm" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                </svg>
+                                <svg id="eyeSlashIconConfirm" class="w-5 h-5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"></path>
+                                </svg>
+                            </button>
+                        </div>
+                        <p id="passwordMatchError" class="text-xs text-red-600 mt-2 hidden">Passwords do not match</p>
                     </div>
 
                     <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
@@ -90,6 +119,48 @@
         </div>
     </main>
     <script>
+        const registerPassword = document.getElementById('registerPassword');
+        const confirmPassword = document.getElementById('confirmPassword');
+        const toggleRegisterPassword = document.getElementById('toggleRegisterPassword');
+        const toggleConfirmPassword = document.getElementById('toggleConfirmPassword');
+        const eyeIconRegister = document.getElementById('eyeIconRegister');
+        const eyeSlashIconRegister = document.getElementById('eyeSlashIconRegister');
+        const eyeIconConfirm = document.getElementById('eyeIconConfirm');
+        const eyeSlashIconConfirm = document.getElementById('eyeSlashIconConfirm');
+        const passwordMatchError = document.getElementById('passwordMatchError');
+        
+        if (toggleRegisterPassword && registerPassword) {
+            toggleRegisterPassword.addEventListener('click', () => {
+                const isPassword = registerPassword.type === 'password';
+                registerPassword.type = isPassword ? 'text' : 'password';
+                eyeIconRegister.classList.toggle('hidden');
+                eyeSlashIconRegister.classList.toggle('hidden');
+            });
+        }
+        
+        if (toggleConfirmPassword && confirmPassword) {
+            toggleConfirmPassword.addEventListener('click', () => {
+                const isPassword = confirmPassword.type === 'password';
+                confirmPassword.type = isPassword ? 'text' : 'password';
+                eyeIconConfirm.classList.toggle('hidden');
+                eyeSlashIconConfirm.classList.toggle('hidden');
+            });
+        }
+        
+        if (registerPassword && confirmPassword && passwordMatchError) {
+            const checkPasswordMatch = () => {
+                if (confirmPassword.value && registerPassword.value !== confirmPassword.value) {
+                    passwordMatchError.classList.remove('hidden');
+                    confirmPassword.setCustomValidity('Passwords do not match');
+                } else {
+                    passwordMatchError.classList.add('hidden');
+                    confirmPassword.setCustomValidity('');
+                }
+            };
+            registerPassword.addEventListener('input', checkPasswordMatch);
+            confirmPassword.addEventListener('input', checkPasswordMatch);
+        }
+
         const registerEmail = document.getElementById('registerEmail');
         if (registerEmail) {
             const applyDomain = (domain) => {

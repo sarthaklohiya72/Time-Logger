@@ -120,5 +120,25 @@ def init_db(db_name: str) -> None:
             "UPDATE email_verifications SET purpose = 'verify_email' WHERE purpose IS NULL OR purpose = ''"
         )
 
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS sheety_api_accounts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            account_email TEXT NOT NULL,
+            api_base_url TEXT NOT NULL,
+            api_token TEXT,
+            priority INTEGER NOT NULL,
+            is_active INTEGER DEFAULT 0,
+            last_tested TEXT,
+            last_success TEXT,
+            failure_count INTEGER DEFAULT 0,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(user_id) REFERENCES users(id)
+        )
+        """
+    )
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_sheety_accounts_user ON sheety_api_accounts(user_id, priority)")
+
     conn.commit()
     conn.close()

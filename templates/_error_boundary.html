@@ -1,0 +1,140 @@
+<!-- Global Error Boundary Script - Include in all pages -->
+<script>
+    (function() {
+        'use strict';
+        
+        // Global error boundary
+        let errorCount = 0;
+        const MAX_ERRORS = 3;
+        const ERROR_RESET_TIME = 60000; // 1 minute
+        let errorResetTimer = null;
+        
+        function showErrorUI(message, details) {
+            const errorContainer = document.getElementById('globalErrorBoundary');
+            if (!errorContainer) {
+                const div = document.createElement('div');
+                div.id = 'globalErrorBoundary';
+                div.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.9);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;';
+                div.innerHTML = `
+                    <div style="background:#fff;border-radius:16px;padding:32px;max-width:500px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+                        <div style="text-align:center;margin-bottom:24px;">
+                            <svg style="width:64px;height:64px;margin:0 auto;color:#EF4444;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                            </svg>
+                        </div>
+                        <h2 style="font-size:24px;font-weight:700;color:#111827;margin-bottom:12px;text-align:center;">Something went wrong</h2>
+                        <p id="errorMessage" style="color:#6B7280;margin-bottom:24px;text-align:center;font-size:14px;"></p>
+                        <details style="margin-bottom:24px;padding:12px;background:#F3F4F6;border-radius:8px;font-size:12px;color:#374151;max-height:200px;overflow-y:auto;">
+                            <summary style="cursor:pointer;font-weight:600;margin-bottom:8px;">Technical details</summary>
+                            <pre id="errorDetails" style="white-space:pre-wrap;word-break:break-word;margin:0;"></pre>
+                        </details>
+                        <div style="display:flex;gap:12px;">
+                            <button onclick="window.location.reload()" style="flex:1;padding:12px 24px;background:#111827;color:#F59E0B;border:none;border-radius:12px;font-weight:600;cursor:pointer;font-size:14px;">
+                                Reload Page
+                            </button>
+                            <button onclick="window.location.href='/'" style="flex:1;padding:12px 24px;background:#F3F4F6;color:#111827;border:none;border-radius:12px;font-weight:600;cursor:pointer;font-size:14px;">
+                                Go Home
+                            </button>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(div);
+            }
+            
+            const errorMsg = document.getElementById('errorMessage');
+            const errorDet = document.getElementById('errorDetails');
+            if (errorMsg) errorMsg.textContent = message;
+            if (errorDet) errorDet.textContent = details;
+        }
+        
+        function handleError(error, source) {
+            errorCount++;
+            
+            if (errorResetTimer) clearTimeout(errorResetTimer);
+            errorResetTimer = setTimeout(() => {
+                errorCount = 0;
+            }, ERROR_RESET_TIME);
+            
+            console.error(`[Error Boundary] ${source}:`, error);
+            
+            // Log to server if available
+            try {
+                if (navigator.sendBeacon) {
+                    const data = JSON.stringify({
+                        message: error.message || String(error),
+                        stack: error.stack || '',
+                        source: source,
+                        url: window.location.href,
+                        timestamp: new Date().toISOString()
+                    });
+                    navigator.sendBeacon('/api/log-error', data);
+                }
+            } catch (e) {
+                // Ignore logging errors
+            }
+            
+            if (errorCount >= MAX_ERRORS) {
+                showErrorUI(
+                    'Multiple errors detected. The app may be unstable.',
+                    `${error.message || String(error)}\n\nStack: ${error.stack || 'N/A'}`
+                );
+            } else {
+                // Show toast notification for single errors
+                showErrorToast(error.message || 'An error occurred');
+            }
+        }
+        
+        function showErrorToast(message) {
+            const toast = document.createElement('div');
+            toast.style.cssText = 'position:fixed;top:20px;right:20px;background:#EF4444;color:#fff;padding:16px 24px;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,0.3);z-index:9999;max-width:400px;animation:slideIn 0.3s ease;';
+            toast.innerHTML = `
+                <div style="display:flex;align-items:center;gap:12px;">
+                    <svg style="width:20px;height:20px;flex-shrink:0;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <span style="font-size:14px;font-weight:500;">${message}</span>
+                </div>
+            `;
+            document.body.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.style.animation = 'slideOut 0.3s ease';
+                setTimeout(() => toast.remove(), 300);
+            }, 5000);
+        }
+        
+        // Global error handlers
+        window.addEventListener('error', function(event) {
+            handleError(event.error || new Error(event.message), 'window.error');
+        });
+        
+        window.addEventListener('unhandledrejection', function(event) {
+            handleError(event.reason || new Error('Unhandled promise rejection'), 'unhandledrejection');
+        });
+        
+        // Wrap fetch to catch network errors
+        const originalFetch = window.fetch;
+        window.fetch = function(...args) {
+            return originalFetch.apply(this, args).catch(error => {
+                handleError(error, 'fetch');
+                throw error;
+            });
+        };
+        
+        // Add CSS animations
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes slideIn {
+                from { transform: translateX(400px); opacity: 0; }
+                to { transform: translateX(0); opacity: 1; }
+            }
+            @keyframes slideOut {
+                from { transform: translateX(0); opacity: 1; }
+                to { transform: translateX(400px); opacity: 0; }
+            }
+        `;
+        document.head.appendChild(style);
+        
+        console.log('[Error Boundary] Initialized');
+    })();
+</script>

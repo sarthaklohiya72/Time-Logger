@@ -1,0 +1,144 @@
+<!-- Toast Notification System -->
+<div id="toastContainer" class="fixed top-4 right-4 z-[10000] flex flex-col gap-3 pointer-events-none" style="max-width: calc(100vw - 32px);"></div>
+
+<script>
+    (function() {
+        'use strict';
+        
+        window.showToast = function(message, type = 'info', duration = 5000) {
+            const container = document.getElementById('toastContainer');
+            if (!container) return;
+            
+            const toast = document.createElement('div');
+            toast.className = 'toast-item pointer-events-auto transform transition-all duration-300 ease-out';
+            
+            // Determine colors based on type
+            let bgColor, borderColor, iconPath, iconColor;
+            switch(type) {
+                case 'success':
+                    bgColor = '#10B981';
+                    borderColor = '#059669';
+                    iconColor = '#FFFFFF';
+                    iconPath = 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z';
+                    break;
+                case 'error':
+                    bgColor = '#EF4444';
+                    borderColor = '#DC2626';
+                    iconColor = '#FFFFFF';
+                    iconPath = 'M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z';
+                    break;
+                case 'warning':
+                    bgColor = '#F59E0B';
+                    borderColor = '#D97706';
+                    iconColor = '#FFFFFF';
+                    iconPath = 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z';
+                    break;
+                case 'failover':
+                    bgColor = '#8B5CF6';
+                    borderColor = '#7C3AED';
+                    iconColor = '#FFFFFF';
+                    iconPath = 'M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4';
+                    break;
+                default: // info
+                    bgColor = '#3B82F6';
+                    borderColor = '#2563EB';
+                    iconColor = '#FFFFFF';
+                    iconPath = 'M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z';
+            }
+            
+            toast.innerHTML = `
+                <div class="flex items-start gap-3 px-4 py-3 rounded-xl shadow-2xl border-2" 
+                     style="background: ${bgColor}; border-color: ${borderColor}; min-width: 280px; max-width: 400px;">
+                    <svg class="w-5 h-5 flex-shrink-0 mt-0.5" style="color: ${iconColor}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${iconPath}"></path>
+                    </svg>
+                    <div class="flex-1 text-sm font-medium" style="color: #FFFFFF; word-break: break-word;">
+                        ${message}
+                    </div>
+                    <button class="toast-close flex-shrink-0 ml-2 hover:opacity-70 transition-opacity" aria-label="Close">
+                        <svg class="w-4 h-4" style="color: ${iconColor}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+            `;
+            
+            // Add to container
+            container.appendChild(toast);
+            
+            // Animate in
+            requestAnimationFrame(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateX(100px)';
+                requestAnimationFrame(() => {
+                    toast.style.opacity = '1';
+                    toast.style.transform = 'translateX(0)';
+                });
+            });
+            
+            // Close handler
+            const closeBtn = toast.querySelector('.toast-close');
+            const removeToast = () => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateX(100px)';
+                setTimeout(() => {
+                    if (toast.parentNode) {
+                        toast.parentNode.removeChild(toast);
+                    }
+                }, 300);
+            };
+            
+            if (closeBtn) {
+                closeBtn.addEventListener('click', removeToast);
+            }
+            
+            // Auto remove after duration
+            if (duration > 0) {
+                setTimeout(removeToast, duration);
+            }
+        };
+        
+        // API Failover notification helper
+        window.showApiFailoverNotification = function(fromAccount, toAccount) {
+            const message = `API switched from <strong>${fromAccount}</strong> to <strong>${toAccount}</strong> due to connection failure.`;
+            window.showToast(message, 'failover', 8000);
+        };
+        
+        // Success helper
+        window.showSuccessToast = function(message, duration) {
+            window.showToast(message, 'success', duration);
+        };
+        
+        // Error helper
+        window.showErrorToast = function(message, duration) {
+            window.showToast(message, 'error', duration);
+        };
+        
+        // Warning helper
+        window.showWarningToast = function(message, duration) {
+            window.showToast(message, 'warning', duration);
+        };
+        
+        // Info helper
+        window.showInfoToast = function(message, duration) {
+            window.showToast(message, 'info', duration);
+        };
+        
+        console.log('[Toast System] Initialized');
+    })();
+</script>
+
+<style>
+    @media (max-width: 640px) {
+        #toastContainer {
+            top: 8px;
+            right: 8px;
+            left: 8px;
+            max-width: none;
+        }
+        #toastContainer > div > div {
+            min-width: 100% !important;
+            max-width: 100% !important;
+        }
+    }
+</style>

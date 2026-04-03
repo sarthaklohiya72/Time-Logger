@@ -15,7 +15,8 @@ from ..core.constants import GRAPH_TAG_MAP
 from ..core.dates import get_period_range, parse_date_param, parse_period_param
 from ..core.tags import filter_special_tags, primary_special_tag
 from ..repositories.logs import fetch_local_data
-from ..repositories.users import get_user_count
+from ..repositories.users import get_user_count, get_user_by_id
+from ..core.rows import row_value
 from ..services.import_csv import import_csv_content
 from ..services.sync import sync_cloud_data, sync_status_payload
 from .decorators import api_or_login_required, resolve_request_user_id, token_is_valid
@@ -554,3 +555,87 @@ def hard_reset():
         )
     except Exception as exc:
         return jsonify({"status": "error", "message": str(exc)}), 500
+
+
+@bp.route("/api/sheety-accounts", methods=["POST"], endpoint="create_sheety_account")
+@api_or_login_required
+def create_sheety_account():
+    """Create a new Sheety API account for the user."""
+    from ..repositories.sheety_accounts import create_api_account
+    
+    try:
+        db_name = current_app.config["DB_NAME"]
+        user_id = int(getattr(g, "user_id", 0) or 0)
+        
+        data = request.get_json(silent=True) or {}
+        account_email = (data.get("account_email") or "").strip()
+        api_base_url = (data.get("api_base_url") or "").strip()
+        api_token = (data.get("api_token") or "").strip() or None
+        
+        if not api_base_url:
+            return jsonify({"error": "API base URL is required"}), 400
+        
+        if not account_email:
+            user_row = get_user_by_id(db_name, user_id)
+            account_email = (row_value(user_row, "email") or "").strip() or "Unknown"
+        
+        account_id = create_api_account(db_name, user_id, account_email, api_base_url, api_token)
+        
+        return jsonify({
+            "success": True,
+            "account_id": account_id,
+            "message": "API account created successfully"
+        }), 201
+    except Exception as exc:
+        logger.error(f"Error creating API account: {exc}")
+        return jsonify({"error": str(exc)}), 500
+
+
+@bp.route("/api/sheety-accounts/<int:account_id>", methods=["DELETE"], endpoint="delete_sheety_account")
+@api_or_login_required
+def delete_sheety_account(account_id: int):
+    """Delete a Sheety API account."""
+    from ..repositories.sheety_accounts import delete_api_account
+    
+    try:
+        db_name = current_app.config["DB_NAME"]
+        user_id = int(getattr(g, "user_id", 0) or 0)
+        
+        success = delete_api_account(db_name, account_id, user_id)
+        
+        if success:
+            return jsonify({"success": True, "message": "API account deleted"}), 200
+        else:
+            return jsonify({"error": "Account not found"}), 404
+    except Exception as exc:
+        logger.error(f"Error deleting API account: {exc}")
+        return jsonify({"error": str(exc)}), 500
+
+
+@bp.route("/api/sheety-accounts/<int:account_id>/test", methods=["GET"], endpoint="test_sheety_account")
+@api_or_login_required
+def test_sheety_account(account_id: int):
+    """Test a Sheety API account connection."""
+    from ..services.sheety_failover import SheetyFailoverService
+    
+    try:
+        db_name = current_app.config["DB_NAME"]
+        user_id = int(getattr(g, "user_id", 0) or 0)
+        
+        service = SheetyFailoverService(db_name, user_id)
+        success, row_count, error = service.test_connection(account_id)
+        
+        if success:
+            return jsonify({
+                "success": True,
+                "row_count": row_count,
+                "message": f"Connection successful! Found {row_count} rows."
+            }), 200
+        else:
+            return jsonify({
+                "success": False,
+                "error": error or "Connection test failed"
+            }), 200
+    except Exception as exc:
+        logger.error(f"Error testing API account: {exc}")
+        return jsonify({"success": False, "error": str(exc)}), 200
