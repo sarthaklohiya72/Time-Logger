@@ -276,7 +276,11 @@ def verify_email():
                         remember = bool(session.pop("pending_remember", False))
                         session["user_id"] = int(user["id"])
                         session.permanent = remember
-                        return redirect(next_url or url_for("main.dashboard"))
+                        session["otp_authenticated"] = True
+                        session["password_reset_user_id"] = int(user["id"])
+                        return redirect(url_for("auth.reset_password"))
+                    if purpose == "forgot_password":
+                        session["otp_authenticated"] = True
                     session["password_reset_user_id"] = int(user["id"])
                     return redirect(url_for("auth.reset_password"))
                 error = message
@@ -328,6 +332,7 @@ def reset_password():
             conn.commit()
             conn.close()
             session.pop("password_reset_user_id", None)
+            session.pop("otp_authenticated", None)
             session["user_id"] = int(user["id"])
             session.permanent = True
             success = "Password updated."
@@ -440,7 +445,12 @@ def update_profile():
         if new_password != confirm_password:
             session["profile_error"] = "Passwords do not match."
             return redirect(url_for("main.settings"))
-        ok, message = confirm_with_password_or_otp("change_password")
+        ok = False
+        message = ""
+        if session.get("otp_authenticated"):
+            ok = True
+        else:
+            ok, message = confirm_with_password_or_otp("change_password")
         if not ok:
             session["profile_error"] = message
             return redirect(url_for("main.settings"))
@@ -451,6 +461,7 @@ def update_profile():
         )
         conn.commit()
         conn.close()
+        session.pop("otp_authenticated", None)
         session["profile_success"] = "Password updated."
         return redirect(url_for("main.settings"))
 

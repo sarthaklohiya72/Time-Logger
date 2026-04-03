@@ -141,6 +141,26 @@ def dashboard():
 
     start_date, end_date = get_period_range(selected_date, period)
     period_df = df[(df["date"] >= start_date) & (df["date"] <= end_date)] if not df.empty else pd.DataFrame()
+    avg_start_date = start_date
+    avg_end_date = end_date
+    if not period_df.empty:
+        try:
+            parsed_dates = pd.to_datetime(period_df["date"])
+            first_date = parsed_dates.min()
+            last_date = parsed_dates.max()
+            if not pd.isna(first_date):
+                first_date = first_date.date()
+            if not pd.isna(last_date):
+                last_date = last_date.date()
+        except Exception:
+            first_date = None
+            last_date = None
+        if first_date and first_date > avg_start_date:
+            avg_start_date = first_date
+        if last_date and last_date < avg_end_date:
+            avg_end_date = last_date
+    if avg_end_date < avg_start_date:
+        avg_end_date = avg_start_date
 
     matrix = get_matrix_stats(period_df)
 
@@ -210,6 +230,8 @@ def dashboard():
             end_date=end_date,
             current_user=current_user,
             is_admin=is_admin,
+            avg_start_date=avg_start_date,
+            avg_end_date=avg_end_date,
         )
     )
 

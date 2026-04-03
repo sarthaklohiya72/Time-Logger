@@ -137,8 +137,8 @@ class TimeLogParser:
 
             time_val = self._parse_time_token(cleaned, client_now)
             consumed_extra = 0
+            ampm = None
             if time_val is not None:
-                ampm = None
                 if i + 1 < len(tokens):
                     ampm = _ampm_normalized(tokens[i + 1])
                 if ampm and not re.search(r"[ap]m\.?$", cleaned, re.IGNORECASE):
