@@ -95,6 +95,18 @@
         </div>
     </main>
     <script>
+        const loginForm = document.querySelector('form[method="POST"]');
+        const passwordInput = document.querySelector('input[type="password"][name="password"]');
+        
+        if (passwordInput && loginForm) {
+            passwordInput.addEventListener('keydown', (event) => {
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    loginForm.submit();
+                }
+            });
+        }
+
         const loginIdentifier = document.getElementById('loginIdentifier');
         if (loginIdentifier) {
             const applyDomain = (domain) => {

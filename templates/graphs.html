@@ -129,14 +129,55 @@
             box-shadow: 0 18px 40px rgba(17, 24, 39, 0.35);
             border: 1px solid rgba(248, 213, 116, 0.35);
         }
-        .modal-backdrop {
-            background: rgba(15, 23, 42, 0.55);
-            backdrop-filter: blur(6px);
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            backdrop-filter: blur(4px);
+        }
+        .modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-content {
+            background: radial-gradient(circle at top left, #FFFFFF 0%, #F9FAFB 55%, #E5E7EB 100%);
+            border-radius: 24px;
+            max-width: 900px;
+            max-height: 90vh;
+            width: 90%;
+            overflow-y: auto;
+            border: 1px solid rgba(15,23,42,0.08);
+            box-shadow: 0 30px 80px rgba(15,23,42,0.32);
+        }
+        .dropdown-item {
+            padding: 0.65rem 1rem;
+            cursor: pointer;
+            transition: background 0.15s ease;
+            font-size: 0.875rem;
+            color: #374151;
+        }
+        .dropdown-item:hover {
+            background: rgba(243, 244, 246, 0.8);
+        }
+        .dropdown-item:first-child {
+            border-radius: 12px 12px 0 0;
+        }
+        .dropdown-item:last-child {
+            border-radius: 0 0 12px 12px;
+        }
+        #graphTaskSortMenu {
+            z-index: 1050;
         }
     </style>
 </head>
 <body class="antialiased">
-    <header class="bg-white/90 backdrop-blur border-b border-slate-200 shadow-sm" role="banner">
+    <header class="bg-[#F7F1E6]/90 backdrop-blur border-b border-[rgba(148,126,86,0.25)] shadow-sm" role="banner">
         <div class="max-w-6xl mx-auto px-6 md:px-8 py-6">
             <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <div>
@@ -272,44 +313,21 @@
         </div>
     </main>
 
-    <div id="graphTaskModal" class="fixed inset-0 z-50 hidden items-center justify-center px-4">
-        <div class="modal-backdrop absolute inset-0"></div>
-        <div class="relative w-full max-w-4xl rounded-3xl border border-[rgba(148,126,86,0.25)] bg-[#FFFDF8] p-6 md:p-8 shadow-2xl">
-            <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-                <div>
-                    <h4 class="text-lg md:text-xl font-semibold text-gray-900">Tasks in this graph</h4>
-                    <p class="text-xs md:text-sm text-gray-500 mt-1" id="graphTasksSubtitle">Review and exclude any tasks you don’t want included.</p>
-                </div>
-                <button id="closeGraphTasks" class="secondary-cta text-xs md:text-sm">Close</button>
+    <div id="graphTaskModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="graphTaskTitle">
+        <div class="modal-content p-8" role="document">
+            <div class="flex justify-between items-center mb-6">
+                <h2 id="graphTaskTitle" class="text-2xl font-semibold text-gray-900">Tasks in this graph</h2>
+                <button id="closeGraphTasks" class="text-gray-400 hover:text-gray-600 transition">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
             </div>
-            <div class="mt-6 space-y-5">
-                <div class="grid gap-3 md:gap-4 md:grid-cols-3">
-                    <div class="rounded-2xl border border-[rgba(148,126,86,0.25)] bg-white/80 p-3 md:p-4 text-center">
-                        <p class="text-[10px] md:text-xs uppercase tracking-wider text-gray-500">Unique Tasks</p>
-                        <div class="text-lg md:text-xl font-light text-gray-900 mt-1" id="graphTaskUnique">0</div>
-                    </div>
-                    <div class="rounded-2xl border border-[rgba(148,126,86,0.25)] bg-white/80 p-3 md:p-4 text-center">
-                        <p class="text-[10px] md:text-xs uppercase tracking-wider text-gray-500">Total Hours</p>
-                        <div class="text-lg md:text-xl font-light text-gray-900 mt-1" id="graphTaskTotal">0h</div>
-                    </div>
-                    <div class="rounded-2xl border border-[rgba(148,126,86,0.25)] bg-white/80 p-3 md:p-4 text-center">
-                        <p class="text-[10px] md:text-xs uppercase tracking-wider text-gray-500">Avg/Task</p>
-                        <div class="text-lg md:text-xl font-light text-gray-900 mt-1" id="graphTaskAvg">0h</div>
-                    </div>
-                </div>
-                <div id="graphTaskChartWrap" class="rounded-2xl border border-[rgba(148,126,86,0.25)] bg-white/80 p-4 md:p-5">
-                    <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
-                        <p class="text-[10px] uppercase tracking-[0.2em] text-gray-400">Task mix</p>
-                        <span class="text-[11px] text-gray-500">Share of total time</span>
-                    </div>
-                    <div class="relative h-52 md:h-60">
-                        <canvas id="graphTaskChart"></canvas>
-                    </div>
-                    <div id="graphTaskMobileLegend" class="mt-4 mb-1 md:hidden flex flex-wrap gap-2 justify-center text-[11px] text-gray-700"></div>
-                </div>
-            </div>
-            <div id="graphTasksList" class="mt-6 space-y-3 max-h-[45vh] overflow-y-auto pr-1"></div>
-            <div id="graphTasksEmpty" class="mt-6 text-sm text-gray-500 hidden">No tasks match this search.</div>
+            <div id="graphTaskTools" class="mb-4 flex items-center justify-end"></div>
+            <div id="graphTaskStats" class="mb-6 grid grid-cols-3 gap-4"></div>
+            <div id="graphTaskChart" class="mb-12 md:mb-6"></div>
+            <div id="graphTasksList" class="mt-6 md:mt-0 space-y-3"></div>
         </div>
     </div>
 
@@ -361,7 +379,6 @@
         let graphExcludedIds = new Set();
         let graphTasks = [];
         let graphColorScheme = null;
-        let graphTaskChartInstance = null;
 
         const chartTitle = document.getElementById('chartTitle');
         const chartSubtitle = document.getElementById('chartSubtitle');
@@ -381,15 +398,15 @@
         const graphHelpWrapper = document.getElementById('graphHelpWrapper');
         const graphTaskModal = document.getElementById('graphTaskModal');
         const graphTasksList = document.getElementById('graphTasksList');
-        const graphTasksEmpty = document.getElementById('graphTasksEmpty');
-        const graphTasksSubtitle = document.getElementById('graphTasksSubtitle');
+        const graphTaskStats = document.getElementById('graphTaskStats');
+        const graphTaskChart = document.getElementById('graphTaskChart');
+        const graphTaskTools = document.getElementById('graphTaskTools');
         const closeGraphTasks = document.getElementById('closeGraphTasks');
-        const graphTaskUnique = document.getElementById('graphTaskUnique');
-        const graphTaskTotal = document.getElementById('graphTaskTotal');
-        const graphTaskAvg = document.getElementById('graphTaskAvg');
-        const graphTaskChartCanvas = document.getElementById('graphTaskChart');
-        const graphTaskChartWrap = document.getElementById('graphTaskChartWrap');
-        const graphTaskMobileLegend = document.getElementById('graphTaskMobileLegend');
+        let graphTaskChartInstance = null;
+        let graphTaskQuery = '';
+        let graphTaskSort = 'time_desc';
+        let graphTaskSortLabel = 'Time ↓';
+        let graphHiddenTags = {};
 
         function formatHours(value) {
             const num = Number(value) || 0;
@@ -480,72 +497,119 @@
             }
         };
 
-        function updateGraphTaskLegend(labels, colors) {
-            if (!graphTaskMobileLegend) return;
-            const isMobile = window.matchMedia('(max-width: 767px)').matches;
-            if (!isMobile) {
-                graphTaskMobileLegend.innerHTML = '';
-                return;
+        function renderGraphTaskStats() {
+            const activeTasks = graphTasks.filter(task => {
+                const taskName = String(task.task || '').trim().toLowerCase();
+                const query = graphTaskQuery.toLowerCase();
+                if (query && !taskName.includes(query)) return false;
+                return true;
+            });
+            const totalMinutes = activeTasks.reduce((sum, task) => sum + Number(task.duration_minutes || 0), 0);
+            const taskCount = activeTasks.length;
+            const uniqueTasks = new Set(activeTasks.map(t => String(t.task || 'Untitled').trim())).size;
+            const avgMinutes = uniqueTasks ? totalMinutes / uniqueTasks : 0;
+            const statItem = (value, label) => `
+                <div class="rounded-xl border border-slate-100 bg-white/80 px-3 py-3 text-center">
+                    <div class="text-xl md:text-2xl font-light text-gray-900">${value}</div>
+                    <div class="text-[10px] md:text-xs text-gray-500 mt-1 uppercase tracking-wider">${label}</div>
+                </div>
+            `;
+            const stats = [
+                statItem(uniqueTasks, 'Unique tasks'),
+                statItem(formatHours(totalMinutes / 60), 'Total hours'),
+                statItem(formatHours(avgMinutes / 60), 'Avg/task')
+            ];
+            if (graphTaskStats) {
+                graphTaskStats.innerHTML = stats.join('');
             }
-            graphTaskMobileLegend.innerHTML = labels.map((label, idx) => {
-                const color = colors[idx] || '#9CA3AF';
-                return `<span class="inline-flex items-center gap-1">
-                    <span class="inline-block w-2.5 h-2.5 rounded-full" style="background:${color}"></span>
-                    ${label}
-                </span>`;
-            }).join('');
         }
 
-        function updateTaskChart(totals) {
-            if (!graphTaskChartCanvas || !graphTaskChartWrap) return;
-            const entries = Object.entries(totals)
-                .sort((a, b) => b[1] - a[1])
-                .filter(entry => entry[1] > 0);
-            if (!entries.length) {
-                graphTaskChartWrap.classList.add('hidden');
-                if (graphTaskChartInstance) {
-                    graphTaskChartInstance.destroy();
-                    graphTaskChartInstance = null;
-                }
-                updateGraphTaskLegend([], []);
+        function renderGraphTaskChart() {
+            if (!graphTaskChart) return;
+            const activeTasks = graphTasks.filter(task => {
+                const taskName = String(task.task || '').trim().toLowerCase();
+                const query = graphTaskQuery.toLowerCase();
+                if (query && !taskName.includes(query)) return false;
+                return true;
+            });
+            if (!activeTasks.length) {
+                graphTaskChart.innerHTML = '';
                 return;
             }
-            graphTaskChartWrap.classList.remove('hidden');
+            const taskGroups = {};
+            const taskDisplayNames = {};
+            activeTasks.forEach(task => {
+                let rawKey = String(task.task || '').trim();
+                if (!rawKey || /^(undefined|null|none|nan)$/i.test(rawKey)) rawKey = 'Unspecified';
+                const normalizedKey = rawKey.toLowerCase();
+                const hours = Number(task.duration_hours || 0);
+                taskGroups[normalizedKey] = (taskGroups[normalizedKey] || 0) + hours;
+                if (!taskDisplayNames[normalizedKey]) {
+                    taskDisplayNames[normalizedKey] = rawKey;
+                }
+            });
+            const entries = Object.entries(taskGroups).sort((a, b) => b[1] - a[1]);
             const top = entries.slice(0, 6);
             const rest = entries.slice(6);
-            const labels = top.map(entry => entry[0]);
-            const data = top.map(entry => Number((entry[1] / 60).toFixed(2)));
+            let labels = top.map(e => taskDisplayNames[e[0]] || e[0]);
+            let values = top.map(e => e[1]);
             if (rest.length) {
                 labels.push('Other');
-                const restMinutes = rest.reduce((sum, entry) => sum + entry[1], 0);
-                data.push(Number((restMinutes / 60).toFixed(2)));
+                values.push(rest.reduce((s, e) => s + e[1], 0));
             }
             const baseColor = (graphColorScheme && graphColorScheme.primary) || metricColors[currentMetric] || '#111827';
             const accentColor = (graphColorScheme && graphColorScheme.secondary) || null;
-            const palette = [baseColor, accentColor]
-                .filter(Boolean)
-                .concat(['#16A34A', '#A16207', '#7C3AED', '#0EA5A4', '#9F1239', '#9CA3AF', '#F59E0B']);
+            const palette = [baseColor, accentColor].filter(Boolean).concat(['#16A34A', '#A16207', '#7C3AED', '#0EA5A4', '#9F1239', '#9CA3AF', '#F59E0B']);
             const colors = labels.map((_, idx) => palette[idx % palette.length]);
-            updateGraphTaskLegend(labels, colors);
+            const isModalMobile = window.matchMedia('(max-width: 767px)').matches;
+            graphTaskChart.innerHTML = '<div class="relative w-full px-4 md:px-8" style="height: 300px;"><canvas id="graphTaskChartCanvas" class="w-full h-full"></canvas></div><div id="graphTaskMobileLegend" class="mt-6 mb-2 md:hidden flex flex-wrap gap-2 justify-center text-[11px] text-gray-700 px-2"></div>';
+            const mobileLegendEl = document.getElementById('graphTaskMobileLegend');
+            if (mobileLegendEl && isModalMobile) {
+                mobileLegendEl.innerHTML = labels.map((label, idx) => {
+                    const color = colors[idx] || '#9CA3AF';
+                    return `<span class="inline-flex items-center gap-1">
+                        <span class="inline-block w-2.5 h-2.5 rounded-full" style="background:${color}"></span>
+                        ${label}
+                    </span>`;
+                }).join('');
+            }
+            const legendGenerateLabels = (chart) => {
+                const labels = chart.data.labels || [];
+                const values = chart.data.datasets[0]?.data || [];
+                const meta = chart.getDatasetMeta(0);
+                return labels.map((rawLabel, idx) => {
+                    const style = meta?.controller?.getStyle ? meta.controller.getStyle(idx) : {};
+                    const baseText = String(rawLabel ?? '').trim();
+                    const safeText = baseText && !/^(undefined|null|none|nan)$/i.test(baseText) ? baseText : 'Unspecified';
+                    return {
+                        text: safeText,
+                        fillStyle: style.backgroundColor,
+                        strokeStyle: style.borderColor,
+                        lineWidth: style.borderWidth,
+                        hidden: !chart.getDataVisibility(idx),
+                        index: idx,
+                        datasetIndex: 0
+                    };
+                });
+            };
+            const ctx = document.getElementById('graphTaskChartCanvas').getContext('2d');
             if (graphTaskChartInstance) {
                 graphTaskChartInstance.destroy();
             }
-            graphTaskChartInstance = new Chart(graphTaskChartCanvas, {
+            graphTaskChartInstance = new Chart(ctx, {
                 type: 'pie',
-                plugins: [percentLabelPlugin],
                 data: {
-                    labels,
-                    datasets: [
-                        {
-                            data,
-                            backgroundColor: colors,
-                            borderWidth: 2,
-                            borderColor: '#FFFFFF',
-                            hoverOffset: 8,
-                            hoverBorderWidth: 3
-                        }
-                    ]
+                    labels: labels,
+                    datasets: [{
+                        data: values,
+                        backgroundColor: colors,
+                        borderWidth: 2,
+                        borderColor: '#FFFFFF',
+                        hoverOffset: 10,
+                        hoverBorderWidth: 3
+                    }]
                 },
+                plugins: [percentLabelPlugin],
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
@@ -553,7 +617,7 @@
                     plugins: {
                         percentLabelPlugin: {
                             display: true,
-                            fontSize: window.matchMedia('(max-width: 767px)').matches ? 10 : 11,
+                            fontSize: isModalMobile ? 10 : 11,
                             fontFamily: 'Inter',
                             fontWeight: '600',
                             color: '#111827',
@@ -564,20 +628,37 @@
                             precision: 0
                         },
                         legend: {
-                            display: !window.matchMedia('(max-width: 767px)').matches,
+                            display: !isModalMobile,
                             position: 'bottom',
                             labels: {
                                 font: { family: 'Inter', size: 11, weight: '500' },
-                                padding: 14,
+                                padding: 16,
                                 color: '#374151',
                                 usePointStyle: true,
-                                pointStyle: 'circle'
+                                pointStyle: 'circle',
+                                boxWidth: 8,
+                                boxHeight: 8
+                            },
+                            generateLabels: legendGenerateLabels,
+                            onClick: function(e, legendItem, legend) {
+                                const ci = legend.chart;
+                                const index = legendItem.index;
+                                const label = ci.data.labels[index];
+                                const currentlyVisible = ci.getDataVisibility(index) !== false;
+                                ci.toggleDataVisibility(index);
+                                ci.update();
+                                if (currentlyVisible) {
+                                    graphHiddenTags[label] = true;
+                                } else {
+                                    delete graphHiddenTags[label];
+                                }
+                                renderGraphTaskList();
                             }
                         },
                         tooltip: {
                             backgroundColor: 'rgba(17, 24, 39, 0.96)',
-                            padding: 12,
-                            titleFont: { family: 'Inter', size: 12, weight: '600' },
+                            padding: 14,
+                            titleFont: { family: 'Inter', size: 13, weight: '600' },
                             bodyFont: { family: 'Inter', size: 12, weight: '400' },
                             cornerRadius: 10,
                             displayColors: true,
@@ -585,30 +666,104 @@
                             boxHeight: 10,
                             boxPadding: 6,
                             callbacks: {
-                                label: context => `${Number(context.parsed || 0).toFixed(2)}h`
+                                label: function(context) {
+                                    const raw = context.label;
+                                    const label = String(raw ?? '').trim() || 'Unspecified';
+                                    const value = Number(context.parsed || 0);
+                                    const total = context.dataset.data.reduce((sum, v, idx) => {
+                                        const visible = typeof context.chart.getDataVisibility === 'function'
+                                            ? context.chart.getDataVisibility(idx) !== false
+                                            : true;
+                                        return visible ? sum + (Number(v) || 0) : sum;
+                                    }, 0);
+                                    const percent = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                                    return `${label}: ${value.toFixed(1)}h (${percent}%)`;
+                                }
                             }
                         }
+                    },
+                    onClick: function(evt, elements) {
+                        if (!elements || !elements.length) return;
+                        const index = elements[0].index;
+                        const label = graphTaskChartInstance.data.labels[index];
+                        const currentlyVisible = graphTaskChartInstance.getDataVisibility(index) !== false;
+                        graphTaskChartInstance.toggleDataVisibility(index);
+                        graphTaskChartInstance.update();
+                        if (currentlyVisible) {
+                            graphHiddenTags[label] = true;
+                        } else {
+                            delete graphHiddenTags[label];
+                        }
+                        renderGraphTaskList();
                     }
                 }
             });
         }
 
-        function updateTaskSummary(tasks) {
-            if (!graphTaskUnique || !graphTaskTotal || !graphTaskAvg) return;
-            const totals = {};
-            let totalMinutes = 0;
-            tasks.forEach(task => {
-                const minutes = Number(task.duration_minutes || 0);
-                totalMinutes += minutes;
-                const name = String(task.task || 'Untitled task').trim() || 'Untitled task';
-                totals[name] = (totals[name] || 0) + minutes;
+        function renderGraphTaskList() {
+            if (!graphTasksList) return;
+            let filteredTasks = graphTasks.filter(task => {
+                const taskName = String(task.task || '').trim().toLowerCase();
+                const query = graphTaskQuery.toLowerCase();
+                if (query && !taskName.includes(query)) return false;
+                if (graphHiddenTags[String(task.task || '').trim()]) return false;
+                return true;
             });
-            const uniqueCount = Object.keys(totals).length;
-            graphTaskUnique.textContent = String(uniqueCount);
-            graphTaskTotal.textContent = formatHours(totalMinutes / 60);
-            const avgMinutes = uniqueCount ? totalMinutes / uniqueCount : 0;
-            graphTaskAvg.textContent = formatHours(avgMinutes / 60);
-            updateTaskChart(totals);
+            const sortKey = graphTaskSort || 'time_desc';
+            if (sortKey === 'time_desc') {
+                filteredTasks.sort((a, b) => {
+                    const aTime = `${a.date} ${a.start_time}`;
+                    const bTime = `${b.date} ${b.start_time}`;
+                    return bTime.localeCompare(aTime);
+                });
+            } else if (sortKey === 'time_asc') {
+                filteredTasks.sort((a, b) => {
+                    const aTime = `${a.date} ${a.start_time}`;
+                    const bTime = `${b.date} ${b.start_time}`;
+                    return aTime.localeCompare(bTime);
+                });
+            } else if (sortKey === 'duration_desc') {
+                filteredTasks.sort((a, b) => Number(b.duration_hours || 0) - Number(a.duration_hours || 0));
+            } else if (sortKey === 'duration_asc') {
+                filteredTasks.sort((a, b) => Number(a.duration_hours || 0) - Number(b.duration_hours || 0));
+            } else if (sortKey === 'task_az') {
+                filteredTasks.sort((a, b) => String(a.task || '').localeCompare(String(b.task || '')));
+            } else if (sortKey === 'task_za') {
+                filteredTasks.sort((a, b) => String(b.task || '').localeCompare(String(a.task || '')));
+            }
+            const html = filteredTasks.map(task => {
+                const dur = Number(task.duration_hours || 0);
+                const durText = dur >= 1 ? `${dur.toFixed(1)}h` : `${Math.round(dur * 60)} min`;
+                const badges = [];
+                if (task.important) badges.push('<span class="px-2 py-1 bg-emerald-50 text-emerald-700 text-xs rounded-full">Important</span>');
+                if (task.urgent) badges.push('<span class="px-2 py-1 bg-red-50 text-red-700 text-xs rounded-full">Urgent</span>');
+                const displayTag = task.tag || task.raw_tag || '';
+                let tagBadge = '';
+                if (displayTag) {
+                    const tagColor = TAG_COLOR_MAP[displayTag] || '#6B7280';
+                    const tagStyle = `background-color: ${tagColor}15; color: ${tagColor}; border: 1px solid ${tagColor}30;`;
+                    tagBadge = `<span class="px-2 py-0.5 rounded-full text-xs font-medium" style="${tagStyle}">${displayTag}</span>`;
+                }
+                return `
+                    <div class="luxury-card rounded-2xl p-4 md:p-5 mb-3 shadow-lg">
+                        <div class="flex items-center justify-between gap-3">
+                            <div class="flex-1 min-w-0">
+                                <div class="font-medium text-gray-900 mb-1 truncate">${task.task || 'Untitled task'}</div>
+                                <div class="flex flex-wrap items-center gap-2 text-[13px] text-gray-600">
+                                    <span class="text-gray-500">${task.date}</span>
+                                    <span class="text-gray-500">${task.start_time} - ${task.end_time}</span>
+                                    ${tagBadge}
+                                    ${badges.join('')}
+                                </div>
+                            </div>
+                            <div class="shrink-0">
+                                <span class="inline-flex px-2.5 py-1 rounded-full bg-white border border-slate-200 text-xs font-semibold text-gray-700">${durText}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            graphTasksList.innerHTML = html.join('');
         }
 
         function getEndDate() {
@@ -849,18 +1004,100 @@
         }
 
         function openGraphTaskModal() {
-            graphTaskModal.classList.remove('hidden');
-            graphTaskModal.classList.add('flex');
-            if (graphTaskChartInstance) {
-                setTimeout(() => {
-                    graphTaskChartInstance.resize();
-                }, 80);
+            if (!graphTaskModal) return;
+            const sortLabels = {
+                time_desc: 'Time ↓',
+                time_asc: 'Time ↑',
+                duration_desc: 'Duration ↓',
+                duration_asc: 'Duration ↑',
+                task_az: 'Task A→Z',
+                task_za: 'Task Z→A',
+                tag_az: 'Tag A→Z',
+                tag_za: 'Tag Z→A',
+                imp_desc: 'Important first',
+                urg_desc: 'Urgent first'
+            };
+            const sortToggles = {
+                time: ['time_desc', 'time_asc'],
+                duration: ['duration_desc', 'duration_asc'],
+                task: ['task_az', 'task_za'],
+                tag: ['tag_az', 'tag_za']
+            };
+            const resolveSort = (base) => {
+                const options = sortToggles[base];
+                if (!options) {
+                    const fallback = base === 'imp' ? 'imp_desc' : base === 'urg' ? 'urg_desc' : 'time_desc';
+                    return { key: fallback, label: sortLabels[fallback] || 'Time ↓' };
+                }
+                const current = graphTaskSort;
+                const next = options.includes(current)
+                    ? (current === options[0] ? options[1] : options[0])
+                    : options[0];
+                return { key: next, label: sortLabels[next] || 'Time ↓' };
+            };
+            if (graphTaskTools) {
+                graphTaskTools.innerHTML = `
+                    <div class="w-full flex items-center justify-between gap-2">
+                        <div class="flex-1 min-w-0">
+                            <input id="graphTaskSearch" type="search" placeholder="Search tasks..." class="w-full px-3 py-1.5 rounded-full bg-white border border-slate-200 text-xs text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-300" />
+                        </div>
+                        <div class="relative shrink-0">
+                            <button id="graphTaskSortBtn" class="px-3 py-1.5 rounded-full bg-white border border-slate-200 text-xs text-gray-700 shadow-sm active:scale-[0.98] transition">
+                                Sort: <span id="graphTaskSortLabel">${sortLabels[graphTaskSort] || graphTaskSortLabel || 'Time ↓'}</span>
+                            </button>
+                            <div id="graphTaskSortMenu" class="absolute right-0 mt-2 w-44 bg-white rounded-xl shadow-2xl border border-slate-200 hidden">
+                                <div class="dropdown-item" data-key="time">Time</div>
+                                <div class="dropdown-item" data-key="duration">Duration</div>
+                                <div class="dropdown-item" data-key="task">Task</div>
+                                <div class="dropdown-item" data-key="tag">Tag</div>
+                                <div class="dropdown-item" data-key="imp">Important first</div>
+                                <div class="dropdown-item" data-key="urg">Urgent first</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                const btn = document.getElementById('graphTaskSortBtn');
+                const menu = document.getElementById('graphTaskSortMenu');
+                const label = document.getElementById('graphTaskSortLabel');
+                const search = document.getElementById('graphTaskSearch');
+                if (search) {
+                    search.value = String(graphTaskQuery || '');
+                    search.oninput = () => {
+                        graphTaskQuery = search.value;
+                        renderGraphTaskStats();
+                        renderGraphTaskChart();
+                        renderGraphTaskList();
+                    };
+                }
+                if (btn && menu && label) {
+                    btn.onclick = () => menu.classList.toggle('hidden');
+                    menu.querySelectorAll('.dropdown-item').forEach(item => {
+                        item.onclick = () => {
+                            const base = item.getAttribute('data-key');
+                            const next = resolveSort(base);
+                            graphTaskSort = next.key;
+                            graphTaskSortLabel = next.label;
+                            label.textContent = next.label;
+                            menu.classList.add('hidden');
+                            renderGraphTaskList();
+                        };
+                    });
+                    document.addEventListener('click', (e) => {
+                        if (!e.target.closest('#graphTaskSortBtn') && !e.target.closest('#graphTaskSortMenu')) {
+                            menu.classList.add('hidden');
+                        }
+                    });
+                }
             }
+            renderGraphTaskStats();
+            renderGraphTaskChart();
+            renderGraphTaskList();
+            graphTaskModal.classList.add('active');
         }
 
         function closeGraphTaskModal() {
-            graphTaskModal.classList.add('hidden');
-            graphTaskModal.classList.remove('flex');
+            if (!graphTaskModal) return;
+            graphTaskModal.classList.remove('active');
         }
 
         function updateReviewButton() {
@@ -875,45 +1112,6 @@
             }
         }
 
-        function renderGraphTasks() {
-            graphTasksList.innerHTML = '';
-            updateTaskSummary(graphTasks);
-            if (!graphTasks.length) {
-                graphTasksEmpty.classList.remove('hidden');
-                graphTasksSubtitle.textContent = 'No tasks match this search.';
-                return;
-            }
-            graphTasksEmpty.classList.add('hidden');
-            const excludedText = graphExcludedIds.size ? ` · ${graphExcludedIds.size} removed` : '';
-            graphTasksSubtitle.textContent = `Showing ${graphTasks.length} tasks${excludedText}.`;
-            graphTasks.forEach(task => {
-                const row = document.createElement('div');
-                row.className = 'flex flex-col md:flex-row md:items-center md:justify-between gap-3 rounded-2xl border border-[rgba(148,126,86,0.2)] bg-white/80 px-4 py-3 shadow-sm';
-                const tags = task.tag || task.raw_tag || 'No tags';
-                const flags = [];
-                if (task.important) flags.push('Important');
-                if (task.urgent) flags.push('Urgent');
-                row.innerHTML = `
-                    <div>
-                        <div class="text-sm font-semibold text-gray-900">${task.task || 'Untitled task'}</div>
-                        <div class="text-xs text-gray-500 mt-1">${task.date} · ${task.start_time} - ${task.end_time} · ${Number(task.duration_hours || 0).toFixed(2)}h</div>
-                        <div class="text-xs text-gray-500 mt-1">Tags: ${tags}</div>
-                        ${flags.length ? `<div class="flex flex-wrap gap-2 mt-2">${flags.map(flag => `<span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">${flag}</span>`).join('')}</div>` : ''}
-                    </div>
-                    <button class="secondary-cta text-xs md:text-sm" data-task-id="${task.id}">Remove</button>
-                `;
-                const removeBtn = row.querySelector('button');
-                if (removeBtn) {
-                    removeBtn.addEventListener('click', () => {
-                        if (task.id) {
-                            graphExcludedIds.add(task.id);
-                            fetchGraphData({ includeTasks: true, openModal: true });
-                        }
-                    });
-                }
-                graphTasksList.appendChild(row);
-            });
-        }
 
         async function fetchGraphData({ includeTasks = false, openModal = false } = {}) {
             const metricKey = currentMetric;
@@ -928,18 +1126,16 @@
                 }
                 if (!response.ok) throw new Error(`HTTP ${response.status}`);
                 const data = await response.json();
-                updateChart(data, metricKey);
                 if (shouldIncludeTasks) {
                     graphTasks = Array.isArray(data.tasks) ? data.tasks : [];
                     graphColorScheme = graphSearchQuery ? deriveSearchColors(graphTasks) : null;
                     updateReviewButton();
-                    renderGraphTasks();
                 } else {
                     graphTasks = [];
                     graphColorScheme = null;
                     updateReviewButton();
-                    renderGraphTasks();
                 }
+                updateChart(data, metricKey);
                 if (openModal && shouldIncludeTasks) {
                     openGraphTaskModal();
                 }
@@ -1046,13 +1242,13 @@
         closeGraphTasks.addEventListener('click', closeGraphTaskModal);
 
         graphTaskModal.addEventListener('click', (event) => {
-            if (event.target === graphTaskModal || event.target.classList.contains('modal-backdrop')) {
+            if (event.target === graphTaskModal) {
                 closeGraphTaskModal();
             }
         });
 
         document.addEventListener('keydown', (event) => {
-            if (event.key === 'Escape' && !graphTaskModal.classList.contains('hidden')) {
+            if (event.key === 'Escape' && graphTaskModal.classList.contains('active')) {
                 closeGraphTaskModal();
             }
         });
