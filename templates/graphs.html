@@ -497,11 +497,57 @@
             }
         };
 
+        function hoursToHuman(h) {
+            const total = Math.max(0, Math.round(Number(h || 0) * 60));
+            const hrs = Math.floor(total / 60);
+            const mins = total % 60;
+            if (hrs === 0) return `${mins} min`;
+            if (mins === 0) return `${hrs} hr`;
+            if (mins === 30) return `${hrs}.5 hr`;
+            return `${hrs} hr ${mins} min`;
+        }
+
+        function attachHoverSwap() {
+            document.querySelectorAll('.js-hover-hours').forEach(el => {
+                if (el.__hoverBound) return;
+                const raw = el.getAttribute('data-hours') || el.textContent;
+                const h = Number(raw);
+                if (isNaN(h)) return;
+                const decimalText = `${formatHours(h, 1)}h`;
+                const humanText = hoursToHuman(h);
+                el.classList.add('hover-swap', 'cursor-default');
+                el.addEventListener('mouseenter', () => {
+                    el.style.opacity = '0';
+                    el.style.transform = 'scale(0.98)';
+                    setTimeout(() => {
+                        el.textContent = humanText;
+                        el.style.opacity = '1';
+                        el.style.transform = 'scale(1)';
+                    }, 100);
+                });
+                el.addEventListener('mouseleave', () => {
+                    el.style.opacity = '0';
+                    el.style.transform = 'scale(0.98)';
+                    setTimeout(() => {
+                        el.textContent = decimalText;
+                        el.style.opacity = '1';
+                        el.style.transform = 'scale(1)';
+                    }, 100);
+                });
+                el.__hoverBound = true;
+            });
+        }
+
         function renderGraphTaskStats() {
             const activeTasks = graphTasks.filter(task => {
                 const taskName = String(task.task || '').trim().toLowerCase();
                 const query = graphTaskQuery.toLowerCase();
                 if (query && !taskName.includes(query)) return false;
+                const taskNameOriginal = String(task.task || '').trim();
+                const taskNameNormalized = taskNameOriginal.toLowerCase();
+                for (const hiddenKey in graphHiddenTags) {
+                    if (hiddenKey.toLowerCase() === taskNameNormalized) return false;
+                }
                 return true;
             });
             const totalMinutes = activeTasks.reduce((sum, task) => sum + Number(task.duration_minutes || 0), 0);
@@ -514,13 +560,16 @@
                     <div class="text-[10px] md:text-xs text-gray-500 mt-1 uppercase tracking-wider">${label}</div>
                 </div>
             `;
+            const totalHours = totalMinutes / 60;
+            const avgHours = avgMinutes / 60;
             const stats = [
                 statItem(uniqueTasks, 'Unique tasks'),
-                statItem(formatHours(totalMinutes / 60), 'Total hours'),
-                statItem(formatHours(avgMinutes / 60), 'Avg/task')
+                statItem(`<span class="js-hover-hours hover-swap" data-hours="${totalHours}">${formatHours(totalHours, 1)}</span>`, 'Total hours'),
+                statItem(`<span class="js-hover-hours hover-swap" data-hours="${avgHours}">${formatHours(avgHours, 1)}</span>`, 'Avg/task')
             ];
             if (graphTaskStats) {
                 graphTaskStats.innerHTML = stats.join('');
+                attachHoverSwap();
             }
         }
 
@@ -640,6 +689,12 @@
                                 boxHeight: 8
                             },
                             generateLabels: legendGenerateLabels,
+                            onHover: function(e, legendItem, legend) {
+                                e.native.target.style.cursor = 'pointer';
+                            },
+                            onLeave: function(e, legendItem, legend) {
+                                e.native.target.style.cursor = 'default';
+                            },
                             onClick: function(e, legendItem, legend) {
                                 const ci = legend.chart;
                                 const index = legendItem.index;
@@ -652,6 +707,7 @@
                                 } else {
                                     delete graphHiddenTags[label];
                                 }
+                                renderGraphTaskStats();
                                 renderGraphTaskList();
                             }
                         },
@@ -694,6 +750,7 @@
                         } else {
                             delete graphHiddenTags[label];
                         }
+                        renderGraphTaskStats();
                         renderGraphTaskList();
                     }
                 }
@@ -706,7 +763,11 @@
                 const taskName = String(task.task || '').trim().toLowerCase();
                 const query = graphTaskQuery.toLowerCase();
                 if (query && !taskName.includes(query)) return false;
-                if (graphHiddenTags[String(task.task || '').trim()]) return false;
+                const taskNameOriginal = String(task.task || '').trim();
+                const taskNameNormalized = taskNameOriginal.toLowerCase();
+                for (const hiddenKey in graphHiddenTags) {
+                    if (hiddenKey.toLowerCase() === taskNameNormalized) return false;
+                }
                 return true;
             });
             const sortKey = graphTaskSort || 'time_desc';
@@ -733,7 +794,7 @@
             }
             const html = filteredTasks.map(task => {
                 const dur = Number(task.duration_hours || 0);
-                const durText = dur >= 1 ? `${dur.toFixed(1)}h` : `${Math.round(dur * 60)} min`;
+                const durText = formatHours(dur, 1);
                 const badges = [];
                 if (task.important) badges.push('<span class="px-2 py-1 bg-emerald-50 text-emerald-700 text-xs rounded-full">Important</span>');
                 if (task.urgent) badges.push('<span class="px-2 py-1 bg-red-50 text-red-700 text-xs rounded-full">Urgent</span>');
@@ -757,13 +818,17 @@
                                 </div>
                             </div>
                             <div class="shrink-0">
-                                <span class="inline-flex px-2.5 py-1 rounded-full bg-white border border-slate-200 text-xs font-semibold text-gray-700">${durText}</span>
+                                <span class="inline-flex px-2.5 py-1 rounded-full bg-white border border-slate-200 text-xs font-semibold text-gray-700 js-hover-hours hover-swap" data-hours="${dur}">${durText}</span>
                             </div>
                         </div>
                     </div>
                 `;
             });
             graphTasksList.innerHTML = html.join('');
+            attachHoverSwap();
+            if (!filteredTasks.length) {
+                return;
+            }
         }
 
         function getEndDate() {
