@@ -101,22 +101,21 @@
             color: #F8D574;
         }
         .graph-help-btn {
-            width: 26px;
-            height: 26px;
-            border-radius: 9999px;
-            border: 1px solid rgba(148, 126, 86, 0.35);
-            background: rgba(255, 255, 255, 0.85);
-            color: #1F2937;
-            font-size: 0.75rem;
+            border: none;
+            background: transparent;
+            color: #9A7B3C;
+            font-size: 0.9rem;
             font-weight: 700;
+            line-height: 1;
+            padding: 0;
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            transition: transform 0.2s ease, background 0.2s ease;
+            transition: transform 0.2s ease, color 0.2s ease;
         }
         .graph-help-btn:hover {
             transform: translateY(-1px);
-            background: #F7F1E6;
+            color: #7C5E24;
         }
         .graph-help-tooltip {
             width: 280px;
@@ -265,7 +264,7 @@
                         </label>
                         <div class="relative" id="graphHelpWrapper">
                             <button id="graphHelpBtn" type="button" class="graph-help-btn" aria-label="Search syntax help">!</button>
-                            <div id="graphHelpTooltip" class="graph-help-tooltip hidden absolute left-0 top-full mt-2">Default is mutually exclusive. Toggle “Allow search with focus” to combine. Use commas or “or” for alternatives, “and” for strict matches, and “not” to exclude.</div>
+                            <div id="graphHelpTooltip" class="graph-help-tooltip hidden absolute left-0 top-full mt-2">Search matches full words or full tags only. Use AND/OR/NOT and parentheses, or commas for OR. Quotes keep words together ("deep work").</div>
                         </div>
                     </div>
                     <div class="grid gap-2 sm:flex sm:flex-wrap sm:items-center">
@@ -499,10 +498,12 @@
         let graphTaskSortLabel = 'Time ↓';
         let graphHiddenTags = {};
         let graphPendingDeleteTaskId = null;
+        let graphTaskStatsMode = 'total';
 
-        function formatHours(value) {
+        function formatHours(value, decimals = 1, suffix = true) {
             const num = Number(value) || 0;
-            return `${num.toFixed(1)}h`;
+            const formatted = num.toFixed(decimals);
+            return suffix ? `${formatted}h` : formatted;
         }
 
         const parseColor = (value) => {
@@ -680,13 +681,240 @@
             }
         }
 
+        function normalizeGraphTaskName(value) {
+            const raw = String(value || '').trim();
+            if (!raw || /^(undefined|null|none|nan)$/i.test(raw)) {
+                return 'Untitled';
+            }
+            return raw;
+        }
+
+        function normalizeGraphTaskKey(value) {
+            return normalizeGraphTaskName(value).toLowerCase();
+        }
+
+        function parseGraphTaskTime(value) {
+            const raw = String(value || '').trim();
+            if (!raw) return '00:00:00';
+            const match = raw.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(am|pm)?$/i);
+            if (!match) return raw;
+            let hours = Number(match[1]);
+            const minutes = Number(match[2]);
+            const seconds = Number(match[3] || 0);
+            const meridian = (match[4] || '').toLowerCase();
+            if (meridian === 'pm' && hours < 12) hours += 12;
+            if (meridian === 'am' && hours === 12) hours = 0;
+            return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        }
+
+        function getGraphTaskTimestamp(task) {
+            const date = String(task.date || '').trim();
+            if (!date) return 0;
+            const time = parseGraphTaskTime(task.start_time);
+            const stamp = Date.parse(`${date}T${time}`);
+            return Number.isNaN(stamp) ? 0 : stamp;
+        }
+
+        const GRAPH_QUERY_TOKEN_RE = /"[^"]*"|'[^']*'|\(|\)|,|\bAND\b|\bOR\b|\bNOT\b|[^\s()]+/gi;
+
+        function tokenizeGraphQuery(raw) {
+            const cleaned = String(raw || '').trim();
+            if (!cleaned) return [];
+            const matches = cleaned.match(GRAPH_QUERY_TOKEN_RE) || [];
+            const tokens = [];
+            matches.forEach(match => {
+                const token = String(match || '').trim();
+                if (!token) return;
+                if (token === ',') {
+                    tokens.push({ type: 'OR' });
+                    return;
+                }
+                if (token === '(' || token === ')') {
+                    tokens.push({ type: token });
+                    return;
+                }
+                const upper = token.toUpperCase();
+                if (upper === 'AND' || upper === 'OR' || upper === 'NOT') {
+                    tokens.push({ type: upper });
+                    return;
+                }
+                let term = token;
+                if ((term.startsWith('"') && term.endsWith('"')) || (term.startsWith("'") && term.endsWith("'"))) {
+                    term = term.slice(1, -1);
+                }
+                term = term.trim().toLowerCase();
+                if (term) {
+                    tokens.push({ type: 'TERM', value: term });
+                }
+            });
+            return tokens;
+        }
+
+        function parseGraphTaskQuery(raw) {
+            const tokens = tokenizeGraphQuery(raw);
+            if (!tokens.length) return null;
+            let index = 0;
+
+            const peek = () => tokens[index];
+            const consume = () => tokens[index++];
+
+            const parsePrimary = () => {
+                const token = peek();
+                if (!token) return null;
+                if (token.type === 'TERM') {
+                    consume();
+                    return { type: 'term', value: token.value };
+                }
+                if (token.type === '(') {
+                    consume();
+                    const expr = parseOr();
+                    if (peek() && peek().type === ')') consume();
+                    return expr;
+                }
+                return null;
+            };
+
+            const parseNot = () => {
+                const token = peek();
+                if (token && token.type === 'NOT') {
+                    consume();
+                    const expr = parseNot();
+                    return expr ? { type: 'not', expr } : null;
+                }
+                return parsePrimary();
+            };
+
+            const parseAnd = () => {
+                let left = parseNot();
+                if (!left) return null;
+                while (true) {
+                    const token = peek();
+                    if (!token) break;
+                    if (token.type === 'AND') {
+                        consume();
+                        const right = parseNot();
+                        if (!right) break;
+                        left = { type: 'and', left, right };
+                        continue;
+                    }
+                    if (token.type === 'TERM' || token.type === '(' || token.type === 'NOT') {
+                        const right = parseNot();
+                        if (!right) break;
+                        left = { type: 'and', left, right };
+                        continue;
+                    }
+                    break;
+                }
+                return left;
+            };
+
+            const parseOr = () => {
+                let left = parseAnd();
+                if (!left) return null;
+                while (true) {
+                    const token = peek();
+                    if (token && token.type === 'OR') {
+                        consume();
+                        const right = parseAnd();
+                        if (!right) break;
+                        left = { type: 'or', left, right };
+                        continue;
+                    }
+                    break;
+                }
+                return left;
+            };
+
+            return parseOr();
+        }
+
+        function normalizeGraphValue(value) {
+            return String(value || '').toLowerCase().replace(/\s+/g, ' ').trim();
+        }
+
+        function splitGraphTokens(value) {
+            const clean = normalizeGraphValue(value);
+            if (!clean) return [];
+            return clean.split(/[^a-z0-9]+/).filter(Boolean);
+        }
+
+        function hasTokenSequence(tokens, sequence) {
+            if (!tokens.length || !sequence.length || sequence.length > tokens.length) return false;
+            for (let i = 0; i <= tokens.length - sequence.length; i += 1) {
+                let match = true;
+                for (let j = 0; j < sequence.length; j += 1) {
+                    if (tokens[i + j] !== sequence[j]) {
+                        match = false;
+                        break;
+                    }
+                }
+                if (match) return true;
+            }
+            return false;
+        }
+
+        function getGraphTaskTagPhrases(task) {
+            const raw = String(task.tag || task.raw_tag || '');
+            const directTags = raw
+                .split(',')
+                .map(tag => normalizeGraphValue(tag))
+                .filter(Boolean);
+            const displayTags = formatTagNames(raw)
+                .split(',')
+                .map(tag => normalizeGraphValue(tag))
+                .filter(Boolean);
+            const primaryTag = normalizeTagName(raw);
+            const normalizedPrimary = primaryTag ? normalizeGraphValue(primaryTag) : '';
+            return Array.from(new Set([...directTags, ...displayTags, normalizedPrimary].filter(Boolean)));
+        }
+
+        function graphTaskTermMatches(task, term) {
+            const clean = normalizeGraphValue(term);
+            if (!clean) return false;
+            if (clean === 'urgent') return Boolean(task.urgent);
+            if (clean === 'important') return Boolean(task.important);
+
+            const termTokens = splitGraphTokens(clean);
+            if (!termTokens.length) return false;
+
+            const tokenGroups = [];
+            const taskTokens = splitGraphTokens(task.task);
+            if (taskTokens.length) tokenGroups.push(taskTokens);
+            const dateTokens = splitGraphTokens(task.date);
+            if (dateTokens.length) tokenGroups.push(dateTokens);
+
+            getGraphTaskTagPhrases(task).forEach(tag => {
+                const tagTokens = splitGraphTokens(tag);
+                if (tagTokens.length) tokenGroups.push(tagTokens);
+            });
+
+            if (termTokens.length === 1) {
+                const token = termTokens[0];
+                return tokenGroups.some(tokens => tokens.includes(token));
+            }
+
+            return tokenGroups.some(tokens => hasTokenSequence(tokens, termTokens));
+        }
+
+        function evaluateGraphTaskQuery(expr, task) {
+            if (!expr) return true;
+            if (expr.type === 'term') return graphTaskTermMatches(task, expr.value);
+            if (expr.type === 'not') return !evaluateGraphTaskQuery(expr.expr, task);
+            if (expr.type === 'and') return evaluateGraphTaskQuery(expr.left, task) && evaluateGraphTaskQuery(expr.right, task);
+            if (expr.type === 'or') return evaluateGraphTaskQuery(expr.left, task) || evaluateGraphTaskQuery(expr.right, task);
+            return true;
+        }
+
+        function graphTaskMatchesQuery(task, expr) {
+            if (!expr) return true;
+            return evaluateGraphTaskQuery(expr, task);
+        }
+
         function renderGraphTaskStats() {
+            const searchExpr = parseGraphTaskQuery(graphTaskQuery);
             const activeTasks = graphTasks.filter(task => {
-                const taskName = String(task.task || '').trim().toLowerCase();
-                const query = graphTaskQuery.toLowerCase();
-                if (query && !taskName.includes(query)) return false;
-                const taskNameOriginal = String(task.task || '').trim();
-                const taskNameNormalized = taskNameOriginal.toLowerCase();
+                if (!graphTaskMatchesQuery(task, searchExpr)) return false;
+                const taskNameNormalized = normalizeGraphTaskKey(task.task);
                 for (const hiddenKey in graphHiddenTags) {
                     if (hiddenKey.toLowerCase() === taskNameNormalized) return false;
                 }
@@ -694,33 +922,58 @@
             });
             const totalMinutes = activeTasks.reduce((sum, task) => sum + Number(task.duration_minutes || 0), 0);
             const taskCount = activeTasks.length;
-            const uniqueTasks = new Set(activeTasks.map(t => String(t.task || 'Untitled').trim())).size;
-            const avgMinutes = uniqueTasks ? totalMinutes / uniqueTasks : 0;
+            const uniqueTasks = new Set(activeTasks.map(t => normalizeGraphTaskKey(t.task))).size;
+            const avgMinutes = taskCount ? totalMinutes / taskCount : 0;
+            const activeDates = new Set(
+                activeTasks.map(task => String(task.date || '').trim()).filter(Boolean)
+            );
+            const activeDays = Math.max(activeDates.size, 1);
+            const canAverage = activeDays > 1;
+            if (!canAverage && graphTaskStatsMode === 'avg') {
+                graphTaskStatsMode = 'total';
+            }
             const statItem = (value, label) => `
                 <div class="rounded-xl border border-slate-100 bg-white/80 px-3 py-3 text-center">
                     <div class="text-xl md:text-2xl font-light text-gray-900">${value}</div>
                     <div class="text-[10px] md:text-xs text-gray-500 mt-1 uppercase tracking-wider">${label}</div>
                 </div>
             `;
+            const useAverage = graphTaskStatsMode === 'avg' && canAverage;
             const totalHours = totalMinutes / 60;
-            const avgHours = avgMinutes / 60;
+            const avgDayHours = totalHours / activeDays;
+            const avgTaskHours = avgMinutes / 60;
+            const totalLabel = useAverage ? 'Avg/day' : 'Total hours';
+            const displayHours = useAverage ? avgDayHours : totalHours;
             const stats = [
                 statItem(uniqueTasks, 'Unique tasks'),
-                statItem(`<span class="js-hover-hours hover-swap" data-hours="${totalHours}">${formatHours(totalHours, 1)}</span>`, 'Total hours'),
-                statItem(`<span class="js-hover-hours hover-swap" data-hours="${avgHours}">${formatHours(avgHours, 1)}</span>`, 'Avg/task')
+                statItem(`<span class="js-hover-hours hover-swap" data-hours="${displayHours}">${formatHours(displayHours, 1)}</span>`, totalLabel),
+                statItem(`<span class="js-hover-hours hover-swap" data-hours="${avgTaskHours}">${formatHours(avgTaskHours, 1)}</span>`, 'Avg/task')
             ];
             if (graphTaskStats) {
                 graphTaskStats.innerHTML = stats.join('');
+                graphTaskStats.classList.toggle('cursor-pointer', canAverage);
+                graphTaskStats.title = canAverage ? 'Click to toggle total/avg' : '';
+                if (!graphTaskStats.__toggleBound) {
+                    graphTaskStats.addEventListener('click', () => {
+                        graphTaskStatsMode = graphTaskStatsMode === 'avg' ? 'total' : 'avg';
+                        renderGraphTaskStats();
+                        renderGraphTaskList();
+                    });
+                    graphTaskStats.__toggleBound = true;
+                }
                 attachHoverSwap();
             }
         }
 
         function renderGraphTaskChart() {
             if (!graphTaskChart) return;
+            const searchExpr = parseGraphTaskQuery(graphTaskQuery);
             const activeTasks = graphTasks.filter(task => {
-                const taskName = String(task.task || '').trim().toLowerCase();
-                const query = graphTaskQuery.toLowerCase();
-                if (query && !taskName.includes(query)) return false;
+                if (!graphTaskMatchesQuery(task, searchExpr)) return false;
+                const taskNameNormalized = normalizeGraphTaskKey(task.task);
+                for (const hiddenKey in graphHiddenTags) {
+                    if (hiddenKey.toLowerCase() === taskNameNormalized) return false;
+                }
                 return true;
             });
             if (!activeTasks.length) {
@@ -730,9 +983,8 @@
             const taskGroups = {};
             const taskDisplayNames = {};
             activeTasks.forEach(task => {
-                let rawKey = String(task.task || '').trim();
-                if (!rawKey || /^(undefined|null|none|nan)$/i.test(rawKey)) rawKey = 'Unspecified';
-                const normalizedKey = rawKey.toLowerCase();
+                const rawKey = normalizeGraphTaskName(task.task);
+                const normalizedKey = normalizeGraphTaskKey(task.task);
                 const hours = Number(task.duration_hours || 0);
                 taskGroups[normalizedKey] = (taskGroups[normalizedKey] || 0) + hours;
                 if (!taskDisplayNames[normalizedKey]) {
@@ -753,36 +1005,44 @@
             const palette = [baseColor, accentColor].filter(Boolean).concat(['#16A34A', '#A16207', '#7C3AED', '#0EA5A4', '#9F1239', '#9CA3AF', '#F59E0B']);
             const colors = labels.map((_, idx) => palette[idx % palette.length]);
             const isModalMobile = window.matchMedia('(max-width: 767px)').matches;
-            graphTaskChart.innerHTML = '<div class="relative w-full px-4 md:px-8" style="height: 300px;"><canvas id="graphTaskChartCanvas" class="w-full h-full"></canvas></div><div id="graphTaskMobileLegend" class="mt-6 mb-2 md:hidden flex flex-wrap gap-2 justify-center text-[11px] text-gray-700 px-2"></div>';
+            graphTaskChart.innerHTML = '<div class="relative w-full px-4 md:px-8" style="height: 300px;"><canvas id="graphTaskChartCanvas" class="w-full h-full"></canvas></div><div id="graphTaskMobileLegend" class="mt-6 mb-2 md:hidden flex flex-wrap gap-2 justify-center text-[11px] text-gray-700 px-2"></div><div id="graphTaskDesktopLegend" class="mt-4 hidden md:flex flex-wrap gap-3 justify-center text-[11px] text-gray-700 px-4"></div>';
             const mobileLegendEl = document.getElementById('graphTaskMobileLegend');
-            if (mobileLegendEl && isModalMobile) {
-                mobileLegendEl.innerHTML = labels.map((label, idx) => {
+            const desktopLegendEl = document.getElementById('graphTaskDesktopLegend');
+            const updateMobileLegend = (chart) => {
+                if (mobileLegendEl && isModalMobile) {
+                    mobileLegendEl.innerHTML = labels.map((label, idx) => {
+                        const color = colors[idx] || '#9CA3AF';
+                        const isHidden = chart ? !chart.getDataVisibility(idx) : false;
+                        const textDecoration = isHidden ? 'line-through' : 'none';
+                        const opacity = isHidden ? '0.5' : '1';
+                        return `<span class="inline-flex items-center gap-1 cursor-pointer hover:opacity-70 transition-opacity" data-legend-idx="${idx}" style="opacity:${opacity}">
+                            <span class="inline-block w-2.5 h-2.5 rounded-full" style="background:${color}"></span>
+                            <span style="text-decoration:${textDecoration}">${label}</span>
+                        </span>`;
+                    }).join('');
+                } else if (mobileLegendEl) {
+                    mobileLegendEl.innerHTML = '';
+                }
+            };
+            const updateDesktopLegend = (chart) => {
+                if (!desktopLegendEl) return;
+                if (isModalMobile) {
+                    desktopLegendEl.innerHTML = '';
+                    return;
+                }
+                desktopLegendEl.innerHTML = labels.map((label, idx) => {
                     const color = colors[idx] || '#9CA3AF';
-                    return `<span class="inline-flex items-center gap-1">
+                    const isHidden = chart ? !chart.getDataVisibility(idx) : false;
+                    const textDecoration = isHidden ? 'line-through' : 'none';
+                    const opacity = isHidden ? '0.5' : '1';
+                    return `<span class="inline-flex items-center gap-1 cursor-pointer hover:opacity-70 transition-opacity" data-legend-idx="${idx}" style="opacity:${opacity}">
                         <span class="inline-block w-2.5 h-2.5 rounded-full" style="background:${color}"></span>
-                        ${label}
+                        <span style="text-decoration:${textDecoration}" class="max-w-[160px] truncate">${label}</span>
                     </span>`;
                 }).join('');
-            }
-            const legendGenerateLabels = (chart) => {
-                const labels = chart.data.labels || [];
-                const values = chart.data.datasets[0]?.data || [];
-                const meta = chart.getDatasetMeta(0);
-                return labels.map((rawLabel, idx) => {
-                    const style = meta?.controller?.getStyle ? meta.controller.getStyle(idx) : {};
-                    const baseText = String(rawLabel ?? '').trim();
-                    const safeText = baseText && !/^(undefined|null|none|nan)$/i.test(baseText) ? baseText : 'Unspecified';
-                    return {
-                        text: safeText,
-                        fillStyle: style.backgroundColor,
-                        strokeStyle: style.borderColor,
-                        lineWidth: style.borderWidth,
-                        hidden: !chart.getDataVisibility(idx),
-                        index: idx,
-                        datasetIndex: 0
-                    };
-                });
             };
+            updateMobileLegend(null);
+            updateDesktopLegend(null);
             const ctx = document.getElementById('graphTaskChartCanvas').getContext('2d');
             if (graphTaskChartInstance) {
                 graphTaskChartInstance.destroy();
@@ -819,39 +1079,7 @@
                             precision: 0
                         },
                         legend: {
-                            display: !isModalMobile,
-                            position: 'bottom',
-                            labels: {
-                                font: { family: 'Inter', size: 11, weight: '500' },
-                                padding: 16,
-                                color: '#374151',
-                                usePointStyle: true,
-                                pointStyle: 'circle',
-                                boxWidth: 8,
-                                boxHeight: 8
-                            },
-                            generateLabels: legendGenerateLabels,
-                            onHover: function(e, legendItem, legend) {
-                                e.native.target.style.cursor = 'pointer';
-                            },
-                            onLeave: function(e, legendItem, legend) {
-                                e.native.target.style.cursor = 'default';
-                            },
-                            onClick: function(e, legendItem, legend) {
-                                const ci = legend.chart;
-                                const index = legendItem.index;
-                                const label = ci.data.labels[index];
-                                const currentlyVisible = ci.getDataVisibility(index) !== false;
-                                ci.toggleDataVisibility(index);
-                                ci.update();
-                                if (currentlyVisible) {
-                                    graphHiddenTags[label] = true;
-                                } else {
-                                    delete graphHiddenTags[label];
-                                }
-                                renderGraphTaskStats();
-                                renderGraphTaskList();
-                            }
+                            display: false
                         },
                         tooltip: {
                             backgroundColor: 'rgba(17, 24, 39, 0.96)',
@@ -892,51 +1120,82 @@
                         } else {
                             delete graphHiddenTags[label];
                         }
+                        updateMobileLegend(graphTaskChartInstance);
+                        updateDesktopLegend(graphTaskChartInstance);
                         renderGraphTaskStats();
                         renderGraphTaskList();
                     }
                 }
             });
+            updateMobileLegend(graphTaskChartInstance);
+            updateDesktopLegend(graphTaskChartInstance);
+            const legendClickHandler = (event) => {
+                const legendItem = event.target.closest('[data-legend-idx]');
+                if (!legendItem) return;
+                const index = parseInt(legendItem.dataset.legendIdx, 10);
+                if (!Number.isFinite(index)) return;
+                const label = graphTaskChartInstance.data.labels[index];
+                const currentlyVisible = graphTaskChartInstance.getDataVisibility(index) !== false;
+                graphTaskChartInstance.toggleDataVisibility(index);
+                graphTaskChartInstance.update();
+                if (currentlyVisible) {
+                    graphHiddenTags[label] = true;
+                } else {
+                    delete graphHiddenTags[label];
+                }
+                updateMobileLegend(graphTaskChartInstance);
+                updateDesktopLegend(graphTaskChartInstance);
+                renderGraphTaskStats();
+                renderGraphTaskList();
+            };
+            if (mobileLegendEl) {
+                mobileLegendEl.addEventListener('click', legendClickHandler);
+            }
+            if (desktopLegendEl) {
+                desktopLegendEl.addEventListener('click', legendClickHandler);
+            }
         }
 
         function renderGraphTaskList() {
             if (!graphTasksList) return;
+            const searchExpr = parseGraphTaskQuery(graphTaskQuery);
             let filteredTasks = graphTasks.filter(task => {
-                const taskName = String(task.task || '').trim().toLowerCase();
-                const query = graphTaskQuery.toLowerCase();
-                if (query && !taskName.includes(query)) return false;
-                const taskNameOriginal = String(task.task || '').trim();
-                const taskNameNormalized = taskNameOriginal.toLowerCase();
+                if (!graphTaskMatchesQuery(task, searchExpr)) return false;
+                const taskNameNormalized = normalizeGraphTaskKey(task.task);
                 for (const hiddenKey in graphHiddenTags) {
                     if (hiddenKey.toLowerCase() === taskNameNormalized) return false;
                 }
                 return true;
             });
+            if (!filteredTasks.length) {
+                graphTasksList.innerHTML = '<div class="text-center py-8 text-gray-400">No tasks found</div>';
+                return;
+            }
             const sortKey = graphTaskSort || 'time_desc';
             if (sortKey === 'time_desc') {
                 filteredTasks.sort((a, b) => {
-                    const aTime = `${a.date} ${a.start_time}`;
-                    const bTime = `${b.date} ${b.start_time}`;
-                    return bTime.localeCompare(aTime);
+                    return getGraphTaskTimestamp(b) - getGraphTaskTimestamp(a);
                 });
             } else if (sortKey === 'time_asc') {
                 filteredTasks.sort((a, b) => {
-                    const aTime = `${a.date} ${a.start_time}`;
-                    const bTime = `${b.date} ${b.start_time}`;
-                    return aTime.localeCompare(bTime);
+                    return getGraphTaskTimestamp(a) - getGraphTaskTimestamp(b);
                 });
             } else if (sortKey === 'duration_desc') {
                 filteredTasks.sort((a, b) => Number(b.duration_hours || 0) - Number(a.duration_hours || 0));
             } else if (sortKey === 'duration_asc') {
                 filteredTasks.sort((a, b) => Number(a.duration_hours || 0) - Number(b.duration_hours || 0));
             } else if (sortKey === 'task_az') {
-                filteredTasks.sort((a, b) => String(a.task || '').localeCompare(String(b.task || '')));
+                filteredTasks.sort((a, b) => normalizeGraphTaskName(a.task).localeCompare(normalizeGraphTaskName(b.task)));
             } else if (sortKey === 'task_za') {
-                filteredTasks.sort((a, b) => String(b.task || '').localeCompare(String(a.task || '')));
+                filteredTasks.sort((a, b) => normalizeGraphTaskName(b.task).localeCompare(normalizeGraphTaskName(a.task)));
+            } else if (sortKey === 'imp_desc') {
+                filteredTasks.sort((a, b) => Number(Boolean(b.important)) - Number(Boolean(a.important)));
+            } else if (sortKey === 'urg_desc') {
+                filteredTasks.sort((a, b) => Number(Boolean(b.urgent)) - Number(Boolean(a.urgent)));
             }
             const html = filteredTasks.map(task => {
                 const dur = Number(task.duration_hours || 0);
-                const durText = formatHours(dur, 1);
+                const durText = hoursToHuman(dur);
                 const badges = [];
                 if (task.important) badges.push('<span class="px-2 py-1 bg-emerald-50 text-emerald-700 text-xs rounded-full">Important</span>');
                 if (task.urgent) badges.push('<span class="px-2 py-1 bg-red-50 text-red-700 text-xs rounded-full">Urgent</span>');
@@ -959,7 +1218,7 @@
                     <div class="luxury-card rounded-2xl p-4 md:p-5 mb-3 shadow-lg">
                         <div class="flex items-center justify-between gap-3">
                             <div class="flex-1 min-w-0">
-                                <div class="font-medium text-gray-900 mb-1 truncate">${task.task || 'Untitled task'}</div>
+                                <div class="font-medium text-gray-900 mb-1 truncate">${normalizeGraphTaskName(task.task) || 'Untitled task'}</div>
                                 <div class="flex flex-wrap items-center gap-2 text-[13px] text-gray-600">
                                     <span class="text-gray-500">${task.date}</span>
                                     <span class="text-gray-500">${task.start_time} - ${task.end_time}</span>
@@ -977,9 +1236,6 @@
             });
             graphTasksList.innerHTML = html.join('');
             attachHoverSwap();
-            if (!filteredTasks.length) {
-                return;
-            }
         }
 
         function getGraphTaskById(taskId) {
@@ -1424,7 +1680,7 @@
         }
 
         function updateReviewButton() {
-            const showButton = graphSearchQuery.length > 0 || graphExcludedIds.size > 0;
+            const showButton = true;
             if (showButton) {
                 reviewGraphTasks.classList.remove('hidden');
                 const countLabel = graphTasks.length ? ` (${graphTasks.length})` : '';

@@ -183,7 +183,6 @@ class SheetyFailoverService:
         update_account_test_result(self.db_name, account['id'], success, self.user_id)
         
         if success:
-            set_active_account(self.db_name, account['id'], self.user_id)
             return True, row_count, None
         else:
             return False, None, error or "Connection test failed"

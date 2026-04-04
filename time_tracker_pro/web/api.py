@@ -29,75 +29,174 @@ bp = Blueprint("api", __name__)
 
 logger = logging.getLogger(__name__)
 
+SearchExpr = Tuple[str, Any]
+SEARCH_TOKEN_RE = re.compile(r'"[^"]*"|\'[^\']*\'|\(|\)|,|\bAND\b|\bOR\b|\bNOT\b|[^\s()]+', re.IGNORECASE)
 
-def parse_graph_search(raw: str) -> List[List[Tuple[str, bool]]]:
-    cleaned = re.sub(r"\s+", " ", (raw or "").strip().lower())
+
+def parse_graph_search(raw: str) -> Optional[SearchExpr]:
+    cleaned = re.sub(r"\s+", " ", (raw or "").strip())
     if not cleaned:
-        return []
-    cleaned = cleaned.replace(",", " or ")
-    groups: List[List[Tuple[str, bool]]] = []
-    for chunk in re.split(r"\s+or\s+", cleaned):
-        chunk = chunk.strip()
-        if not chunk:
+        return None
+    tokens: List[Tuple[str, Optional[str]]] = []
+    for match in SEARCH_TOKEN_RE.findall(cleaned):
+        token = match.strip()
+        if not token:
             continue
-        group: List[Tuple[str, bool]] = []
-        for part in re.split(r"\s+and\s+", chunk):
-            part = part.strip()
-            if not part:
+        if token == ",":
+            tokens.append(("OR", None))
+            continue
+        if token in {"(", ")"}:
+            tokens.append((token, None))
+            continue
+        upper = token.upper()
+        if upper in {"AND", "OR", "NOT"}:
+            tokens.append((upper, None))
+            continue
+        if token[0] in {'"', "'"} and token[-1] == token[0]:
+            token = token[1:-1]
+        term = token.strip().lower()
+        if term:
+            tokens.append(("TERM", term))
+    if not tokens:
+        return None
+
+    index = 0
+
+    def peek() -> Optional[Tuple[str, Optional[str]]]:
+        return tokens[index] if index < len(tokens) else None
+
+    def consume() -> Optional[Tuple[str, Optional[str]]]:
+        nonlocal index
+        token = peek()
+        if token is not None:
+            index += 1
+        return token
+
+    def parse_primary() -> Optional[SearchExpr]:
+        token = peek()
+        if not token:
+            return None
+        if token[0] == "TERM":
+            consume()
+            return ("term", token[1] or "")
+        if token[0] == "(":
+            consume()
+            expr = parse_or()
+            if peek() and peek()[0] == ")":
+                consume()
+            return expr
+        return None
+
+    def parse_not() -> Optional[SearchExpr]:
+        token = peek()
+        if token and token[0] == "NOT":
+            consume()
+            expr = parse_not()
+            return ("not", expr) if expr else None
+        return parse_primary()
+
+    def parse_and() -> Optional[SearchExpr]:
+        left = parse_not()
+        if not left:
+            return None
+        while True:
+            token = peek()
+            if not token:
+                break
+            if token[0] == "AND":
+                consume()
+                right = parse_not()
+                if not right:
+                    break
+                left = ("and", left, right)
                 continue
-            match = re.match(r"^(?:if\s+not|not)\s+(.+)$", part)
-            if match and match.group(1):
-                term = match.group(1).strip()
-                if term:
-                    group.append((term, True))
+            if token[0] in {"TERM", "(", "NOT"}:
+                right = parse_not()
+                if not right:
+                    break
+                left = ("and", left, right)
                 continue
-            group.append((part, False))
-        if group:
-            groups.append(group)
-    return groups
+            break
+        return left
+
+    def parse_or() -> Optional[SearchExpr]:
+        left = parse_and()
+        if not left:
+            return None
+        while True:
+            token = peek()
+            if token and token[0] == "OR":
+                consume()
+                right = parse_and()
+                if not right:
+                    break
+                left = ("or", left, right)
+                continue
+            break
+        return left
+
+    return parse_or()
 
 
 def graph_term_matches(row: pd.Series, term: str) -> bool:
     clean = str(term or "").strip().lower()
     if not clean:
         return False
-    if clean in {"imp", "important"}:
+    if clean == "important":
         return bool(row.get("important"))
-    if clean in {"urg", "urgent"}:
+    if clean == "urgent":
         return bool(row.get("urgent"))
-    haystacks = [
-        row.get("task"),
-        row.get("tag"),
-        row.get("raw_tag"),
-        row.get("primary_tag"),
-    ]
+
+    def normalize_text(value: Any) -> str:
+        return re.sub(r"\s+", " ", str(value or "").strip().lower())
+
+    def split_terms(value: Any) -> List[str]:
+        clean_value = normalize_text(value)
+        if not clean_value:
+            return []
+        return [part for part in re.split(r"[^a-z0-9]+", clean_value) if part]
+
+    def split_tags(value: Any) -> List[str]:
+        clean_value = normalize_text(value)
+        if not clean_value:
+            return []
+        return [part.strip() for part in clean_value.split(",") if part.strip()]
+
+    tags = set()
+    for value in [row.get("tag"), row.get("raw_tag"), row.get("primary_tag")]:
+        tags.update(split_tags(value))
     special_tags = row.get("special_tags")
-    if isinstance(special_tags, list) and special_tags:
-        haystacks.append(" ".join([str(tag) for tag in special_tags if tag]))
-    for value in haystacks:
-        if clean in str(value or "").lower():
-            return True
-    return False
+    if isinstance(special_tags, list):
+        tags.update([normalize_text(tag) for tag in special_tags if tag])
 
-
-def graph_row_matches(row: pd.Series, groups: List[List[Tuple[str, bool]]]) -> bool:
-    if not groups:
+    if clean in tags:
         return True
-    for group in groups:
-        matched = True
-        for term, negated in group:
-            term_match = graph_term_matches(row, term)
-            if negated:
-                if term_match:
-                    matched = False
-                    break
-            else:
-                if not term_match:
-                    matched = False
-                    break
-        if matched:
-            return True
-    return False
+
+    task_value = normalize_text(row.get("task"))
+    date_value = normalize_text(row.get("date"))
+    if clean == task_value or clean == date_value:
+        return True
+
+    tokens = set(split_terms(task_value))
+    tokens.update(split_terms(date_value))
+    for tag in tags:
+        tokens.update(split_terms(tag))
+    return clean in tokens
+
+
+def graph_row_matches(row: pd.Series, expr: Optional[SearchExpr]) -> bool:
+    if not expr:
+        return True
+    op = expr[0]
+    if op == "term":
+        return graph_term_matches(row, expr[1])
+    if op == "not":
+        return not graph_row_matches(row, expr[1]) if expr[1] else True
+    if op == "and":
+        return graph_row_matches(row, expr[1]) and graph_row_matches(row, expr[2])
+    if op == "or":
+        return graph_row_matches(row, expr[1]) or graph_row_matches(row, expr[2])
+    return True
 
 
 @bp.route("/api/graph-data", endpoint="graph_data")
@@ -154,9 +253,9 @@ def graph_data():
         df = df[(~df["urgent"]) & (~df["important"])]
 
     if search:
-        search_groups = parse_graph_search(search)
-        if search_groups:
-            df = df[df.apply(lambda row: graph_row_matches(row, search_groups), axis=1)]
+        search_expr = parse_graph_search(search)
+        if search_expr:
+            df = df[df.apply(lambda row: graph_row_matches(row, search_expr), axis=1)]
 
     if raw_exclude:
         try:
@@ -630,6 +729,41 @@ def create_task():
     if end_dt <= start_dt:
         return jsonify({"error": "Duration must be greater than 0"}), 400
 
+    conn = get_db_connection(db_name)
+    overlap_rows = conn.execute(
+        "SELECT id, sheety_id, task, start_date, start_time, end_date, end_time FROM logs WHERE user_id = ?",
+        (int(user_id),),
+    ).fetchall()
+    overlaps: List[Dict[str, Any]] = []
+    for row in overlap_rows:
+        other_start = parse_datetime(row["start_date"], row["start_time"])
+        other_end = parse_datetime(row["end_date"], row["end_time"])
+        if other_start is None or other_end is None:
+            continue
+        if other_end <= start_dt or other_start >= end_dt:
+            continue
+        overlaps.append(
+            {
+                "id": int(row["id"]),
+                "sheety_id": (int(row["sheety_id"]) if row["sheety_id"] is not None else None),
+                "task": row["task"],
+                "start_time": other_start.strftime("%I:%M %p"),
+                "end_time": other_end.strftime("%I:%M %p"),
+                "date": other_start.strftime("%Y-%m-%d"),
+            }
+        )
+    if overlaps:
+        conn.close()
+        return (
+            jsonify(
+                {
+                    "error": "Task overlaps existing logs.",
+                    "overlaps": overlaps,
+                }
+            ),
+            409,
+        )
+
     def format_time(dt: datetime) -> str:
         return dt.strftime("%I:%M%p").lstrip("0").lower()
 
@@ -697,13 +831,13 @@ def create_task():
     service = SheetyFailoverService(db_name, user_id)
     success, data, error = service.make_request("POST", "", {sheet_name: log_payload})
     if not success:
+        conn.close()
         return jsonify({"error": error or "Failed to create task in Sheety"}), 502
 
     sheety_id = extract_sheety_id(data, sheet_name)
     if sheety_id is None:
         return jsonify({"error": "Sheety did not return a new row id."}), 502
 
-    conn = get_db_connection(db_name)
     try:
         cursor = conn.execute(
             """
