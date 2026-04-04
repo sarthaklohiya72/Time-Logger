@@ -240,14 +240,6 @@ def dashboard():
             avg_end_date=avg_end_date,
         )
     )
-
-    expected = os.getenv("TIME_TRACKER_API_TOKEN")
-    if expected and get_user_count(db_name) <= 1:
-        try:
-            resp.set_cookie("tt_token", expected, httponly=True, samesite="Lax")
-        except Exception as exc:
-            logger.warning("Failed to set tt_token cookie error=%s", exc)
-
     return resp
 
 

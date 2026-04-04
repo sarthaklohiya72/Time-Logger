@@ -108,6 +108,15 @@ class LogEntryParserRulesTests(unittest.TestCase):
         self.assertEqual(second["start_dt"], datetime(2026, 1, 20, 19, 50))
         self.assertEqual(second["end_dt"], datetime(2026, 1, 20, 20, 27))
 
+    def test_ambiguous_hhmm_infers_pm_from_client_now(self) -> None:
+        parsed = self.parse_with_now(
+            "10:10 workout . Soul Important",
+            "2026-01-21 22:29",
+            previous_end=datetime(2026, 1, 21, 21, 0),
+        )
+        self.assertEqual(parsed["start_dt"], datetime(2026, 1, 21, 21, 0))
+        self.assertEqual(parsed["end_dt"], datetime(2026, 1, 21, 22, 10))
+
     def test_generated_permutations_do_not_crash(self) -> None:
         time_seqs = [
             ("9",),

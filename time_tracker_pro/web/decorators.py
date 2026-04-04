@@ -21,10 +21,7 @@ def token_is_valid(headers: Dict[str, str]) -> bool:
     if not expected:
         return False
     db_name = current_app.config["DB_NAME"]
-    allow_cookie_token = get_user_count(db_name) <= 1
     provided = headers.get("X-API-Token") or request.args.get("token") or ""
-    if allow_cookie_token and not provided:
-        provided = request.cookies.get("tt_token") or ""
     return bool(provided and hmac.compare_digest(provided, expected))
 
 

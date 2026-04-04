@@ -27,7 +27,16 @@ def create_app(config_overrides: Optional[Dict[str, Any]] = None) -> Flask:
 
     app = Flask(__name__, template_folder=template_folder)
 
-    app.secret_key = os.getenv("SECRET_KEY", "dev-secret-change-me")
+    secret = os.getenv("SECRET_KEY")
+    if not secret or secret == "dev-secret-change-me":
+        env = (os.getenv("FLASK_ENV") or os.getenv("ENV") or "").strip().lower()
+        allow_insecure = env in {"dev", "development"} or os.getenv("ALLOW_INSECURE_SECRET") == "1"
+        if not allow_insecure:
+            raise RuntimeError(
+                "SECRET_KEY is missing or insecure. Set a strong random SECRET_KEY in the environment before running in production."
+            )
+        secret = secret or "dev-secret-change-me"
+    app.secret_key = secret
     app.config.update(
         SESSION_COOKIE_HTTPONLY=True,
         SESSION_COOKIE_SAMESITE="Lax",

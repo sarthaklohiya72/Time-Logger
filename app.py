@@ -31,7 +31,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
-app.secret_key = os.getenv("SECRET_KEY", "dev-secret-change-me")
+app.secret_key = os.getenv("SECRET_KEY", "a@|$q)x7wAie^MQ,Jhcd]$Mk-d&,Z)nE")
 app.config.update(
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SAMESITE="Lax",
@@ -953,6 +953,7 @@ class TimeLogParser:
                 return "pm"
             return None
 
+        leading_date_has_comma = False
         i = 0
         while i < len(tokens):
             token = tokens[i]
@@ -974,6 +975,8 @@ class TimeLogParser:
                         trailing_dot = trailing_dot or tokens[i + 1].endswith(".")
 
             date_val = self._parse_date_token(cleaned, client_now)
+            if i == 0 and date_val and token.endswith(","):
+                leading_date_has_comma = True
             if time_val:
                 elements.append(("time", time_val))
                 dot_positions.append(trailing_dot)
@@ -991,6 +994,19 @@ class TimeLogParser:
             i = consumed
 
         remaining_tokens = tokens[consumed:]
+        explicit_logged_dt = None
+        if (
+            leading_date_has_comma
+            and len(elements) >= 2
+            and elements[0][0] == "date"
+            and elements[1][0] == "time"
+            and not any(kind == "date" for kind, _ in elements[2:])
+        ):
+            explicit_logged_dt = self._combine_dt(elements[0][1], elements[1][1])
+            client_now = explicit_logged_dt
+            elements = elements[2:]
+            dot_positions = dot_positions[2:]
+
         dot_after_first = dot_positions[0] if dot_positions else False
         dot_after_last = dot_positions[-1] if dot_positions else False
         if remaining_tokens and remaining_tokens[0].startswith("."):
@@ -1042,13 +1058,19 @@ class TimeLogParser:
         current_date = client_now.date()
         start_dt = previous_end_dt or client_now
         end_dt = client_now
+        has_explicit_logged_time = explicit_logged_dt is not None
 
         if len(elements) == 0:
             start_dt = previous_end_dt or client_now
             end_dt = client_now
         elif len(elements) == 1 and elements[0][0] == "time":
             t1 = elements[0][1]
-            if dot_after_last:
+            if has_explicit_logged_time:
+                start_dt = self._combine_dt(current_date, t1)
+                if start_dt > client_now:
+                    start_dt = start_dt - timedelta(days=1)
+                end_dt = client_now
+            elif dot_after_last:
                 start_dt = self._combine_dt(current_date, t1)
                 if start_dt > client_now:
                     start_dt = start_dt - timedelta(days=1)

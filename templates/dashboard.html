@@ -42,7 +42,7 @@
             transform: translateY(-2px);
             box-shadow: 0 8px 16px 0 rgba(0, 0, 0, 0.08);
         }
-        input[type="date"] {
+        #datePicker input[type="date"] {
             position: absolute;
             opacity: 0;
             width: 100%;
@@ -119,6 +119,7 @@
             border-radius: 9999px;
             border: 1px solid rgba(148, 126, 86, 0.35);
             box-shadow: 0 10px 24px rgba(148, 126, 86, 0.2);
+            align-items: center;
         }
         .period-btn {
             padding: 8px 16px;
@@ -139,6 +140,30 @@
         .period-btn:hover {
             color: #1F2937;
             background: #F7F1E6;
+        }
+        @media (min-width: 768px) {
+            .period-selector {
+                padding: 2px;
+                height: 36px;
+            }
+            .period-btn {
+                padding: 6px 14px;
+                font-size: 12px;
+            }
+        }
+        @media (max-width: 767px) {
+            body {
+                padding-bottom: calc(72px + env(safe-area-inset-bottom));
+            }
+            .mobile-bottom-nav {
+                position: fixed;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                transform: translateZ(0);
+                will-change: transform;
+                z-index: 50;
+            }
         }
         .primary-cta {
             display: inline-flex;
@@ -691,7 +716,7 @@
 
     </main>
 
-    <nav class="fixed bottom-0 inset-x-0 md:hidden z-40" style="position: fixed;">
+    <nav class="mobile-bottom-nav fixed bottom-0 inset-x-0 md:hidden z-50" style="position: fixed;">
         <div class="mx-auto max-w-7xl">
             <div class="flex items-center justify-around bg-white/95 backdrop-blur border-t border-slate-200 shadow-lg px-2 py-2" style="padding-bottom: env(safe-area-inset-bottom);">
                 <button id="navHome" class="flex flex-col items-center gap-1 px-3 py-1 rounded-xl text-gray-600">
@@ -1819,6 +1844,7 @@
         window.showModal = function(title, data, filterType, chartMode = 'auto') {
             const modal = document.getElementById('taskModal');
             if (!modal) return;
+            modal.style.display = 'flex';
             window.modalData = data;
             window.modalFilterType = filterType;
             window.modalChartMode = chartMode || 'auto';
@@ -2323,18 +2349,26 @@
             }
             window.renderModalTasks();
             if (window.renderModalStats) window.renderModalStats();
-            document.getElementById('taskModal').classList.add('active');
+            modal.classList.add('active');
             focusModal(modal);
         };
 
         window.closeModal = function() {
-            document.getElementById('taskModal').classList.remove('active');
+            const modal = document.getElementById('taskModal');
+            if (modal) {
+                modal.classList.remove('active');
+                modal.style.display = 'none';
+            }
             setGlobalLoading(false);
-            window.closeCreateTaskPanel();
-            window.closeEditTaskPanel();
-            window.closeDeleteTaskConfirm();
+            if (window.closeCreateTaskPanel) window.closeCreateTaskPanel();
+            if (window.closeEditTaskPanel) window.closeEditTaskPanel();
+            if (window.closeDeleteTaskConfirm) window.closeDeleteTaskConfirm();
             if (lastModalFocus && typeof lastModalFocus.focus === 'function') {
-                lastModalFocus.focus();
+                try {
+                    lastModalFocus.focus();
+                } catch (e) {
+                    // ignore focus errors
+                }
             }
         };
 

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import logging
 import os
 from datetime import datetime, timezone
@@ -32,6 +33,10 @@ bp = Blueprint("auth", __name__)
 logger = logging.getLogger(__name__)
 
 _PROFILE_OTP_PURPOSES = {"change_password", "change_username"}
+
+
+def _ua_hash(value: str) -> str:
+    return hashlib.sha256((value or "").encode("utf-8")).hexdigest()
 
 
 @bp.route("/login", methods=["GET", "POST"], endpoint="login")
@@ -96,6 +101,7 @@ def login():
                     session.clear()
                     session["user_id"] = int(row_value(user, "id"))
                     session.permanent = remember
+                    session["ua_hash"] = _ua_hash(request.headers.get("User-Agent") or "")
 
                     settings = get_user_settings(db_name, int(row_value(user, "id")))
                     multi_user = get_user_count(db_name) > 1
@@ -276,11 +282,13 @@ def verify_email():
                         remember = bool(session.pop("pending_remember", False))
                         session["user_id"] = int(user["id"])
                         session.permanent = remember
+                        session["ua_hash"] = _ua_hash(request.headers.get("User-Agent") or "")
                         return redirect(url_for("main.settings"))
                     if purpose == "login_otp":
                         remember = bool(session.pop("pending_remember", False))
                         session["user_id"] = int(user["id"])
                         session.permanent = remember
+                        session["ua_hash"] = _ua_hash(request.headers.get("User-Agent") or "")
                         session["otp_authenticated"] = True
                         session["password_reset_user_id"] = int(user["id"])
                         return redirect(url_for("auth.reset_password"))

@@ -426,7 +426,7 @@ def update_task(task_id: int):
         if meta_tokens:
             log_entry = f"{log_entry}. {' '.join(meta_tokens)}"
 
-        logged_time = end_value.isoformat()
+        logged_time = end_value.strftime("%Y-%m-%d %H:%M:%S")
         tag_value = ", ".join(tags_list) if tags_list else "Waste"
         return {"logEntry": log_entry, "loggedTime": logged_time}, tag_value
 
@@ -791,7 +791,7 @@ def create_task():
         if meta_tokens:
             log_entry = f"{log_entry}. {' '.join(meta_tokens)}"
 
-        logged_time = end_value.isoformat()
+        logged_time = end_value.strftime("%Y-%m-%d %H:%M:%S")
         tag_value = ", ".join(tags_list) if tags_list else "Waste"
         return {"logEntry": log_entry, "loggedTime": logged_time}, tag_value
 
@@ -997,7 +997,7 @@ def delete_task(task_id: int):
         if meta_tokens:
             log_entry = f"{log_entry}. {' '.join(meta_tokens)}"
 
-        logged_time = end_value.isoformat()
+        logged_time = end_value.strftime("%Y-%m-%d %H:%M:%S")
         tag_value = ", ".join(tags_list) if tags_list else "Waste"
         return {"logEntry": log_entry, "loggedTime": logged_time}, tag_value
 
